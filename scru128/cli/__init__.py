@@ -38,7 +38,7 @@ def inspect() -> None:
         help="read identifiers from file",
     )
 
-    pattern = re.compile(r"^[0-7][0-9A-V]{25}$", flags=re.A | re.I)
+    pattern = re.compile(r"^[0-7][0-9A-Va-v]{25}$")
 
     args = parser.parse_args()
     try:

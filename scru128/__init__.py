@@ -54,7 +54,7 @@ class Identifier:
     @classmethod
     def from_str(cls, str_value: str) -> Identifier:
         """Creates an object from a 26-digit string representation."""
-        if re.match(r"^[0-7][0-9A-V]{25}$", str_value, re.A | re.I) is None:
+        if re.match(r"^[0-7][0-9A-Va-v]{25}$", str_value) is None:
             raise ValueError(f"invalid string representation: {str_value}")
         return cls(int(str_value, 32))
 
