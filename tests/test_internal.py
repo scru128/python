@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from scru128 import scru128, Identifier
+from scru128 import scru128, Scru128Id
 
 
 class TestIdentifier(unittest.TestCase):
@@ -21,8 +21,8 @@ class TestIdentifier(unittest.TestCase):
         ]
 
         for e in cases:
-            from_fields = Identifier.new(*e[0])
-            from_str = Identifier.from_str(e[1])
+            from_fields = Scru128Id.from_fields(*e[0])
+            from_str = Scru128Id.from_str(e[1])
             self.assertEqual(int(from_fields), int(e[1], 32))
             self.assertEqual(int(from_str), int(e[1], 32))
             self.assertEqual(
@@ -54,4 +54,4 @@ class TestIdentifier(unittest.TestCase):
         """Has symmetric from_str() and __str__()"""
         for _ in range(1_000):
             src = scru128()
-            self.assertEqual(str(Identifier.from_str(src)), src)
+            self.assertEqual(str(Scru128Id.from_str(src)), src)

@@ -21,8 +21,8 @@ MAX_COUNTER = 0xFFF_FFFF
 CHARSET = "0123456789ABCDEFGHIJKLMNOPQRSTUV"
 
 
-class Identifier:
-    """Represents a SCRU128 ID."""
+class Scru128Id:
+    """Represents a SCRU128 ID and provides converters to/from str and int."""
 
     __slots__ = "_value"
 
@@ -33,9 +33,9 @@ class Identifier:
             raise ValueError("not a 128-bit unsigned integer")
 
     @classmethod
-    def new(
+    def from_fields(
         cls, timestamp: int, counter: int, per_sec_random: int, per_gen_random: int
-    ) -> Identifier:
+    ) -> Scru128Id:
         """Creates an object from field values."""
         if not (
             0 <= timestamp <= 0xFFF_FFFF_FFFF
@@ -52,7 +52,7 @@ class Identifier:
         )
 
     @classmethod
-    def from_str(cls, str_value: str) -> Identifier:
+    def from_str(cls, str_value: str) -> Scru128Id:
         """Creates an object from a 26-digit string representation."""
         if re.match(r"^[0-7][0-9A-Va-v]{25}$", str_value) is None:
             raise ValueError(f"invalid string representation: {str_value}")
@@ -96,7 +96,10 @@ class Identifier:
 
 
 class Generator:
-    """Represents a SCRU128 ID generator."""
+    """
+    Represents a SCRU128 ID generator and provides an interface to do more than just
+    generate a string representation.
+    """
 
     def __init__(self) -> None:
         self._ts_last_gen = 0
@@ -105,7 +108,7 @@ class Generator:
         self._per_sec_random = 0
         self._lock = threading.Lock()
 
-    def generate(self) -> Identifier:
+    def generate(self) -> Scru128Id:
         """Generates a new SCRU128 ID object."""
         with self._lock:
             ts_now = int(datetime.datetime.now().timestamp() * 1000)
@@ -138,7 +141,7 @@ class Generator:
                 self._ts_last_sec = self._ts_last_gen
                 self._per_sec_random = secrets.randbits(24)
 
-            return Identifier.new(
+            return Scru128Id.from_fields(
                 self._ts_last_gen - TIMESTAMP_EPOCH,
                 self._counter,
                 self._per_sec_random,
@@ -150,9 +153,7 @@ default_generator = Generator()
 
 
 def scru128() -> str:
-    """Generates a new SCRU128 ID encoded in a string.
-
-    Returns:
-        26-digit canonical string representation.
+    """
+    Generates a new SCRU128 ID encoded in the 26-digit canonical string representation.
     """
     return str(default_generator.generate())

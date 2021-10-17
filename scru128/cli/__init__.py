@@ -7,7 +7,7 @@ import datetime
 import re
 import sys
 
-from .. import scru128, Identifier, TIMESTAMP_EPOCH
+from .. import scru128, Scru128Id, TIMESTAMP_EPOCH
 
 
 def generate() -> None:
@@ -55,7 +55,7 @@ def inspect() -> None:
 
 
 def _inspect_id(src: str) -> str:
-    obj = Identifier.from_str(src)
+    obj = Scru128Id.from_str(src)
     timestamp_iso = datetime.datetime.fromtimestamp(
         (obj.timestamp + TIMESTAMP_EPOCH) / 1000, tz=datetime.timezone.utc
     ).isoformat(timespec="milliseconds")
