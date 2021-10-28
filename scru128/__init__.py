@@ -134,6 +134,7 @@ class Generator:
         self._counter = 0
         self._ts_last_sec = 0
         self._per_sec_random = 0
+        self._n_clock_check_max = 1_000_000
         self._lock = threading.Lock()
 
     def generate(self) -> Scru128Id:
@@ -153,11 +154,11 @@ class Generator:
             self._counter += 1
             if self._counter > MAX_COUNTER:
                 # wait a moment until clock goes forward when counter overflows
-                n_trials = 0
+                n_clock_check = 0
                 while ts_now <= self._ts_last_gen:
                     ts_now = int(datetime.datetime.now().timestamp() * 1000)
-                    n_trials += 1
-                    if n_trials > 1_000_000:
+                    n_clock_check += 1
+                    if n_clock_check > self._n_clock_check_max:
                         warnings.warn(
                             "scru128: reset state as clock did not go forward",
                             RuntimeWarning,
