@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import copy
 import unittest
+
 
 from scru128 import scru128, Scru128Id
 
@@ -50,8 +52,49 @@ class TestIdentifier(unittest.TestCase):
                 e,
             )
 
-    def test_symmetry(self) -> None:
-        """Has symmetric from_str() and __str__()"""
+    def test_symmetric_converters(self) -> None:
+        """Has symmetric converters from/to str, int, and fields"""
         for _ in range(1_000):
-            src = scru128()
-            self.assertEqual(str(Scru128Id.from_str(src)), src)
+            str_value = scru128()
+            obj = Scru128Id.from_str(str_value)
+            self.assertEqual(str(obj), str_value)
+            self.assertEqual(Scru128Id(int(obj)), obj)
+            self.assertEqual(
+                Scru128Id.from_fields(
+                    obj.timestamp,
+                    obj.counter,
+                    obj.per_sec_random,
+                    obj.per_gen_random,
+                ),
+                obj,
+            )
+
+    def test_comparison_operators(self) -> None:
+        """Supports comparison operators"""
+        ordered = [
+            Scru128Id.from_fields(0, 0, 0, 0),
+            Scru128Id.from_fields(0, 0, 0, 1),
+            Scru128Id.from_fields(0, 0, 1, 0),
+            Scru128Id.from_fields(0, 1, 0, 0),
+            Scru128Id.from_fields(1, 0, 0, 0),
+        ]
+
+        for _ in range(1_000):
+            ordered.append(Scru128Id.from_str(scru128()))
+
+        prev = ordered.pop(0)
+        for curr in ordered:
+            self.assertNotEqual(curr, prev)
+            self.assertNotEqual(prev, curr)
+            self.assertGreater(curr, prev)
+            self.assertGreaterEqual(curr, prev)
+            self.assertLess(prev, curr)
+            self.assertLessEqual(prev, curr)
+
+            clone = copy.copy(curr)
+            self.assertIsNot(curr, clone)
+            self.assertIsNot(clone, curr)
+            self.assertEqual(curr, clone)
+            self.assertEqual(clone, curr)
+
+            prev = curr

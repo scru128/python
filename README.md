@@ -6,7 +6,7 @@ decentralized, globally unique time-ordered identifiers. SCRU128 is inspired by
 
 - 128-bit unsigned integer type
 - Sortable by generation time (as integer and as text)
-- 26-character case-insensitive portable textual representation
+- 26-digit case-insensitive portable textual representation
 - 44-bit biased millisecond timestamp that ensures remaining life of 550 years
 - Up to 268 million time-ordered but unpredictable unique IDs per millisecond
 - 84-bit _layered_ randomness for collision resistance
@@ -18,9 +18,12 @@ print(scru128()) # e.g. "00PGHAJ3Q9VAJ7IU6PQBHBUAK4"
 print(scru128()) # e.g. "00PGHAJ3Q9VAJ7KU6PQ92NVBTV"
 ```
 
+See [SCRU128 Specification] for details.
+
 [uuid]: https://en.wikipedia.org/wiki/Universally_unique_identifier
 [ulid]: https://github.com/ulid/spec
 [ksuid]: https://github.com/segmentio/ksuid
+[scru128 specification]: https://github.com/scru128/spec
 
 ## Command-line interface
 

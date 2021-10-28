@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-__all__ = ["scru128"]
+__all__ = ["scru128", "Generator", "Scru128Id", "TIMESTAMP_BIAS"]
 
 import datetime
 import re
@@ -11,8 +11,8 @@ import threading
 import warnings
 
 
-# Unix time in milliseconds as at 2020-01-01 00:00:00+00:00.
-TIMESTAMP_EPOCH = 1577836800000
+# Unix time in milliseconds at 2020-01-01 00:00:00+00:00.
+TIMESTAMP_BIAS = 1577836800000
 
 # Maximum value of 28-bit counter field.
 MAX_COUNTER = 0xFFF_FFFF
@@ -94,6 +94,34 @@ class Scru128Id:
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(0x{self._value:032X})"
 
+    def __eq__(self, value: object) -> bool:
+        if not isinstance(value, self.__class__):
+            return NotImplemented
+        return self._value == value._value
+
+    def __hash__(self) -> int:
+        return hash(self._value)
+
+    def __lt__(self, value: object) -> bool:
+        if not isinstance(value, self.__class__):
+            return NotImplemented
+        return self._value < value._value
+
+    def __le__(self, value: object) -> bool:
+        if not isinstance(value, self.__class__):
+            return NotImplemented
+        return self._value <= value._value
+
+    def __gt__(self, value: object) -> bool:
+        if not isinstance(value, self.__class__):
+            return NotImplemented
+        return self._value > value._value
+
+    def __ge__(self, value: object) -> bool:
+        if not isinstance(value, self.__class__):
+            return NotImplemented
+        return self._value >= value._value
+
 
 class Generator:
     """
@@ -106,47 +134,52 @@ class Generator:
         self._counter = 0
         self._ts_last_sec = 0
         self._per_sec_random = 0
+        self._n_clock_check_max = 1_000_000
         self._lock = threading.Lock()
 
     def generate(self) -> Scru128Id:
         """Generates a new SCRU128 ID object."""
         with self._lock:
-            ts_now = int(datetime.datetime.now().timestamp() * 1000)
+            return self._generate_thread_unsafe()
 
-            # update timestamp and counter
-            if ts_now > self._ts_last_gen:
+    def _generate_thread_unsafe(self) -> Scru128Id:
+        """Generates a new SCRU128 ID object without overhead for thread safety."""
+        ts_now = int(datetime.datetime.now().timestamp() * 1000)
+
+        # update timestamp and counter
+        if ts_now > self._ts_last_gen:
+            self._ts_last_gen = ts_now
+            self._counter = secrets.randbits(28)
+        else:
+            self._counter += 1
+            if self._counter > MAX_COUNTER:
+                # wait a moment until clock goes forward when counter overflows
+                n_clock_check = 0
+                while ts_now <= self._ts_last_gen:
+                    ts_now = int(datetime.datetime.now().timestamp() * 1000)
+                    n_clock_check += 1
+                    if n_clock_check > self._n_clock_check_max:
+                        warnings.warn(
+                            "scru128: reset state as clock did not go forward",
+                            RuntimeWarning,
+                        )
+                        self._ts_last_sec = 0
+                        break
+
                 self._ts_last_gen = ts_now
                 self._counter = secrets.randbits(28)
-            else:
-                self._counter += 1
-                if self._counter > MAX_COUNTER:
-                    # wait a moment until clock goes forward when counter overflows
-                    n_trials = 0
-                    while ts_now <= self._ts_last_gen:
-                        ts_now = int(datetime.datetime.now().timestamp() * 1000)
-                        n_trials += 1
-                        if n_trials > 1_000_000:
-                            warnings.warn(
-                                "scru128: reset state as clock did not go forward",
-                                RuntimeWarning,
-                            )
-                            self._ts_last_sec = 0
-                            break
 
-                    self._ts_last_gen = ts_now
-                    self._counter = secrets.randbits(28)
+        # update per_sec_random
+        if self._ts_last_gen - self._ts_last_sec > 1000:
+            self._ts_last_sec = self._ts_last_gen
+            self._per_sec_random = secrets.randbits(24)
 
-            # update per_sec_random
-            if self._ts_last_gen - self._ts_last_sec > 1000:
-                self._ts_last_sec = self._ts_last_gen
-                self._per_sec_random = secrets.randbits(24)
-
-            return Scru128Id.from_fields(
-                self._ts_last_gen - TIMESTAMP_EPOCH,
-                self._counter,
-                self._per_sec_random,
-                secrets.randbits(32),
-            )
+        return Scru128Id.from_fields(
+            self._ts_last_gen - TIMESTAMP_BIAS,
+            self._counter,
+            self._per_sec_random,
+            secrets.randbits(32),
+        )
 
 
 default_generator = Generator()
