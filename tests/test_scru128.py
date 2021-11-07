@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 import unittest
 
-from scru128 import scru128, Scru128Id
+from scru128 import scru128, Scru128Generator, Scru128Id
 
 
 class TestScru128(unittest.TestCase):
@@ -25,9 +25,8 @@ class TestScru128(unittest.TestCase):
 
     def test_order(self) -> None:
         """Generates sortable string representation by creation time"""
-        sorted_copy = sorted(self._samples)
-        for i, e in enumerate(self._samples):
-            self.assertEqual(e, sorted_copy[i])
+        for i in range(1, len(self._samples)):
+            self.assertLess(self._samples[i - 1], self._samples[i])
 
     def test_timestamp(self) -> None:
         """Encodes up-to-date timestamp"""
@@ -35,9 +34,10 @@ class TestScru128(unittest.TestCase):
             datetime.datetime(2020, 1, 1, tzinfo=datetime.timezone.utc).timestamp()
             * 1000
         )
+        g = Scru128Generator()
         for i in range(10_000):
             ts_now = int(datetime.datetime.now().timestamp() * 1000) - epoch
-            timestamp = Scru128Id.from_str(scru128()).timestamp
+            timestamp = g.generate().timestamp
             self.assertLess(abs(ts_now - timestamp), 16)
 
     def test_timestamp_and_counter(self) -> None:

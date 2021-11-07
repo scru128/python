@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-__all__ = ["scru128", "Generator", "Scru128Id", "TIMESTAMP_BIAS"]
+__all__ = ["scru128", "Scru128Generator", "Scru128Id", "TIMESTAMP_BIAS"]
 
 import datetime
+import logging
 import re
 import secrets
 import threading
-import warnings
-
 
 # Unix time in milliseconds at 2020-01-01 00:00:00+00:00.
 TIMESTAMP_BIAS = 1577836800000
@@ -30,7 +29,7 @@ class Scru128Id:
         """Creates an object from a 128-bit unsigned integer."""
         self._value = int_value
         if not (0 <= int_value <= 0xFFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF):
-            raise ValueError("not a 128-bit unsigned integer")
+            raise ValueError(f"not a 128-bit unsigned integer: {int_value}")
 
     @classmethod
     def from_fields(
@@ -64,22 +63,22 @@ class Scru128Id:
 
     @property
     def timestamp(self) -> int:
-        """44-bit millisecond timestamp field."""
+        """Returns the 44-bit millisecond timestamp field value."""
         return (self._value >> 84) & 0xFFF_FFFF_FFFF
 
     @property
     def counter(self) -> int:
-        """28-bit per-millisecond counter field."""
+        """Returns the 28-bit per-timestamp monotonic counter field value."""
         return (self._value >> 56) & MAX_COUNTER
 
     @property
     def per_sec_random(self) -> int:
-        """24-bit per-second randomness field."""
+        """Returns the 24-bit per-second randomness field value."""
         return (self._value >> 32) & 0xFF_FFFF
 
     @property
     def per_gen_random(self) -> int:
-        """32-bit per-generation randomness field."""
+        """Returns the 32-bit per-generation randomness field value."""
         return self._value & 0xFFFF_FFFF
 
     def __str__(self) -> str:
@@ -123,7 +122,7 @@ class Scru128Id:
         return self._value >= value._value
 
 
-class Generator:
+class Scru128Generator:
     """
     Represents a SCRU128 ID generator and provides an interface to do more than just
     generate a string representation.
@@ -153,16 +152,14 @@ class Generator:
         else:
             self._counter += 1
             if self._counter > MAX_COUNTER:
-                # wait a moment until clock goes forward when counter overflows
+                logger = logging.getLogger("scru128")
+                logger.info("counter limit reached; will wait until clock goes forward")
                 n_clock_check = 0
                 while ts_now <= self._ts_last_gen:
                     ts_now = int(datetime.datetime.now().timestamp() * 1000)
                     n_clock_check += 1
                     if n_clock_check > self._n_clock_check_max:
-                        warnings.warn(
-                            "scru128: reset state as clock did not go forward",
-                            RuntimeWarning,
-                        )
+                        logger.warning("reset state as clock did not go forward")
                         self._ts_last_sec = 0
                         break
 
@@ -182,7 +179,7 @@ class Generator:
         )
 
 
-default_generator = Generator()
+default_generator = Scru128Generator()
 
 
 def scru128() -> str:

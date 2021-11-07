@@ -4,7 +4,7 @@ import copy
 import unittest
 
 
-from scru128 import scru128, Scru128Id
+from scru128 import scru128, Scru128Generator, Scru128Id
 
 
 class TestIdentifier(unittest.TestCase):
@@ -54,10 +54,10 @@ class TestIdentifier(unittest.TestCase):
 
     def test_symmetric_converters(self) -> None:
         """Has symmetric converters from/to str, int, and fields"""
+        g = Scru128Generator()
         for _ in range(1_000):
-            str_value = scru128()
-            obj = Scru128Id.from_str(str_value)
-            self.assertEqual(str(obj), str_value)
+            obj = g.generate()
+            self.assertEqual(Scru128Id.from_str(str(obj)), obj)
             self.assertEqual(Scru128Id(int(obj)), obj)
             self.assertEqual(
                 Scru128Id.from_fields(
@@ -79,8 +79,9 @@ class TestIdentifier(unittest.TestCase):
             Scru128Id.from_fields(1, 0, 0, 0),
         ]
 
+        g = Scru128Generator()
         for _ in range(1_000):
-            ordered.append(Scru128Id.from_str(scru128()))
+            ordered.append(g.generate())
 
         prev = ordered.pop(0)
         for curr in ordered:
