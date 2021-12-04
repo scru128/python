@@ -4,7 +4,7 @@ import copy
 import unittest
 
 
-from scru128 import scru128, Scru128Generator, Scru128Id
+from scru128 import Scru128Generator, Scru128Id
 
 
 class TestIdentifier(unittest.TestCase):
@@ -74,9 +74,13 @@ class TestIdentifier(unittest.TestCase):
         ordered = [
             Scru128Id.from_fields(0, 0, 0, 0),
             Scru128Id.from_fields(0, 0, 0, 1),
+            Scru128Id.from_fields(0, 0, 0, 0xFFFF_FFFF),
             Scru128Id.from_fields(0, 0, 1, 0),
+            Scru128Id.from_fields(0, 0, 0xFF_FFFF, 0),
             Scru128Id.from_fields(0, 1, 0, 0),
+            Scru128Id.from_fields(0, 0xFFF_FFFF, 0, 0),
             Scru128Id.from_fields(1, 0, 0, 0),
+            Scru128Id.from_fields(2, 0, 0, 0),
         ]
 
         g = Scru128Generator()
@@ -87,6 +91,7 @@ class TestIdentifier(unittest.TestCase):
         for curr in ordered:
             self.assertNotEqual(curr, prev)
             self.assertNotEqual(prev, curr)
+            self.assertNotEqual(hash(curr), hash(prev))
             self.assertGreater(curr, prev)
             self.assertGreaterEqual(curr, prev)
             self.assertLess(prev, curr)
@@ -97,5 +102,10 @@ class TestIdentifier(unittest.TestCase):
             self.assertIsNot(clone, curr)
             self.assertEqual(curr, clone)
             self.assertEqual(clone, curr)
+            self.assertEqual(hash(curr), hash(clone))
+            self.assertGreaterEqual(curr, clone)
+            self.assertGreaterEqual(clone, curr)
+            self.assertLessEqual(curr, clone)
+            self.assertLessEqual(clone, curr)
 
             prev = curr

@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-__all__ = ["scru128", "Scru128Generator", "Scru128Id", "TIMESTAMP_BIAS"]
+__all__ = [
+    "scru128",
+    "scru128_string",
+    "Scru128Generator",
+    "Scru128Id",
+    "TIMESTAMP_BIAS",
+]
 
 import datetime
 import logging
@@ -16,8 +22,7 @@ TIMESTAMP_BIAS = 1577836800000
 # Maximum value of 28-bit counter field.
 MAX_COUNTER = 0xFFF_FFFF
 
-# Digit characters used in the base 32 notation.
-CHARSET = "0123456789ABCDEFGHIJKLMNOPQRSTUV"
+DIGITS = "0123456789ABCDEFGHIJKLMNOPQRSTUV"
 
 
 class Scru128Id:
@@ -83,12 +88,8 @@ class Scru128Id:
 
     def __str__(self) -> str:
         """Returns the 26-digit canonical string representation."""
-        buffer = ["0"] * 26
-        n = self._value
-        for i in range(26):
-            buffer[25 - i] = CHARSET[n & 31]
-            n >>= 5
-        return "".join(buffer)
+        cache = self._value
+        return "".join([DIGITS[(cache >> i) & 31] for i in range(125, -1, -5)])
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(0x{self._value:032X})"
@@ -124,8 +125,8 @@ class Scru128Id:
 
 class Scru128Generator:
     """
-    Represents a SCRU128 ID generator and provides an interface to do more than just
-    generate a string representation.
+    Represents a SCRU128 ID generator that encapsulates the monotonic counter and other
+    internal states.
     """
 
     def __init__(self) -> None:
@@ -137,15 +138,18 @@ class Scru128Generator:
         self._lock = threading.Lock()
 
     def generate(self) -> Scru128Id:
-        """Generates a new SCRU128 ID object."""
+        """
+        Generates a new SCRU128 ID object.
+
+        This method is thread safe; multiple threads can call it concurrently.
+        """
         with self._lock:
             return self._generate_thread_unsafe()
 
     def _generate_thread_unsafe(self) -> Scru128Id:
         """Generates a new SCRU128 ID object without overhead for thread safety."""
-        ts_now = int(datetime.datetime.now().timestamp() * 1000)
-
         # update timestamp and counter
+        ts_now = int(datetime.datetime.now().timestamp() * 1000)
         if ts_now > self._ts_last_gen:
             self._ts_last_gen = ts_now
             self._counter = secrets.randbits(28)
@@ -182,8 +186,19 @@ class Scru128Generator:
 default_generator = Scru128Generator()
 
 
-def scru128() -> str:
+def scru128() -> Scru128Id:
+    """
+    Generates a new SCRU128 ID object.
+
+    This function is thread safe; multiple threads can call it concurrently.
+    """
+    return default_generator.generate()
+
+
+def scru128_string() -> str:
     """
     Generates a new SCRU128 ID encoded in the 26-digit canonical string representation.
+
+    This function is thread safe. Use this to quickly get a new SCRU128 ID as a string.
     """
-    return str(default_generator.generate())
+    return str(scru128())

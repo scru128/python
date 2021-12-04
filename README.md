@@ -12,10 +12,15 @@ decentralized, globally unique time-ordered identifiers. SCRU128 is inspired by
 - 84-bit _layered_ randomness for collision resistance
 
 ```python
-from scru128 import scru128
+from scru128 import scru128, scru128_string
 
-print(scru128()) # e.g. "00PGHAJ3Q9VAJ7IU6PQBHBUAK4"
-print(scru128()) # e.g. "00PGHAJ3Q9VAJ7KU6PQ92NVBTV"
+# generate a new identifier object
+x = scru128()
+print(x)  # e.g. "00S6GVKR1MH58KE72EJD87SDOO"
+print(int(x))  # as a 128-bit unsigned integer
+
+# generate a textual representation directly
+print(scru128_string())  # e.g. "00S6GVKR3F7R79I72EJF0J4RGC"
 ```
 
 See [SCRU128 Specification] for details.

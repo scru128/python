@@ -3,15 +3,21 @@ from __future__ import annotations
 import datetime
 import unittest
 
-from scru128 import scru128, Scru128Generator, Scru128Id
+from scru128 import scru128, scru128_string, Scru128Generator, Scru128Id
 
 
 class TestScru128(unittest.TestCase):
+    def test_type(self) -> None:
+        """Returns a Scru128Id object"""
+        self.assertIsInstance(scru128(), Scru128Id)
+
+
+class TestScru128String(unittest.TestCase):
     _samples: list[str]
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls._samples = [scru128() for _ in range(100_000)]
+        cls._samples = [scru128_string() for _ in range(100_000)]
 
     def test_format(self) -> None:
         """Generates 26-digit canonical string"""

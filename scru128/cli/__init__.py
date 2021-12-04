@@ -1,4 +1,4 @@
-"""Command-line interface to generate SCRU128 identifiers"""
+"""Command-line interface to generate and inspect SCRU128 identifiers"""
 
 from __future__ import annotations
 
