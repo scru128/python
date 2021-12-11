@@ -22,11 +22,14 @@ TIMESTAMP_BIAS = 1577836800000
 # Maximum value of 28-bit counter field.
 MAX_COUNTER = 0xFFF_FFFF
 
+# Digit characters used in the base 32 notation.
 DIGITS = "0123456789ABCDEFGHIJKLMNOPQRSTUV"
 
 
 class Scru128Id:
-    """Represents a SCRU128 ID and provides converters to/from str and int."""
+    """
+    Represents a SCRU128 ID and provides various converters and comparison operators.
+    """
 
     __slots__ = "_value"
 
@@ -130,6 +133,7 @@ class Scru128Generator:
     """
 
     def __init__(self) -> None:
+        """Creates a generator object."""
         self._ts_last_gen = 0
         self._counter = 0
         self._ts_last_sec = 0

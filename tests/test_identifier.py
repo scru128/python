@@ -13,20 +13,28 @@ class TestIdentifier(unittest.TestCase):
         cases = [
             ((0, 0, 0, 0), "00000000000000000000000000"),
             ((2 ** 44 - 1, 0, 0, 0), "7VVVVVVVVG0000000000000000"),
+            ((2 ** 44 - 1, 0, 0, 0), "7vvvvvvvvg0000000000000000"),
             ((0, 2 ** 28 - 1, 0, 0), "000000000FVVVVU00000000000"),
+            ((0, 2 ** 28 - 1, 0, 0), "000000000fvvvvu00000000000"),
             ((0, 0, 2 ** 24 - 1, 0), "000000000000001VVVVS000000"),
+            ((0, 0, 2 ** 24 - 1, 0), "000000000000001vvvvs000000"),
             ((0, 0, 0, 2 ** 32 - 1), "00000000000000000003VVVVVV"),
+            ((0, 0, 0, 2 ** 32 - 1), "00000000000000000003vvvvvv"),
             (
                 (2 ** 44 - 1, 2 ** 28 - 1, 2 ** 24 - 1, 2 ** 32 - 1),
                 "7VVVVVVVVVVVVVVVVVVVVVVVVV",
+            ),
+            (
+                (2 ** 44 - 1, 2 ** 28 - 1, 2 ** 24 - 1, 2 ** 32 - 1),
+                "7vvvvvvvvvvvvvvvvvvvvvvvvv",
             ),
         ]
 
         for e in cases:
             from_fields = Scru128Id.from_fields(*e[0])
-            from_str = Scru128Id.from_str(e[1])
+            from_string = Scru128Id.from_str(e[1])
             self.assertEqual(int(from_fields), int(e[1], 32))
-            self.assertEqual(int(from_str), int(e[1], 32))
+            self.assertEqual(int(from_string), int(e[1], 32))
             self.assertEqual(
                 (
                     (
@@ -37,20 +45,43 @@ class TestIdentifier(unittest.TestCase):
                     ),
                     str(from_fields),
                 ),
-                e,
+                (e[0], e[1].upper()),
             )
             self.assertEqual(
                 (
                     (
-                        from_str.timestamp,
-                        from_str.counter,
-                        from_str.per_sec_random,
-                        from_str.per_gen_random,
+                        from_string.timestamp,
+                        from_string.counter,
+                        from_string.per_sec_random,
+                        from_string.per_gen_random,
                     ),
-                    str(from_str),
+                    str(from_string),
                 ),
-                e,
+                (e[0], e[1].upper()),
             )
+
+    def test_string_validation(self) -> None:
+        """Raises error if an invalid string representation is supplied"""
+        cases = [
+            "",
+            " 00SCT4FL89GQPRHN44C4LFM0OV",
+            "00SCT4FL89GQPRJN44C7SQO381 ",
+            " 00SCT4FL89GQPRLN44C4BGCIIO ",
+            "+00SCT4FL89GQPRNN44C4F3QD24",
+            "-00SCT4FL89GQPRPN44C7H4E5RC",
+            "+0SCT4FL89GQPRRN44C55Q7RVC",
+            "-0SCT4FL89GQPRTN44C6PN0A2R",
+            "00SCT4FL89WQPRVN44C41RGVMM",
+            "00SCT4FL89GQPS1N4_C54QDC5O",
+            "00SCT4-L89GQPS3N44C602O0K8",
+            "00SCT4FL89GQPS N44C7VHS5QJ",
+            "80000000000000000000000000",
+            "VVVVVVVVVVVVVVVVVVVVVVVVVV",
+        ]
+
+        for e in cases:
+            with self.assertRaises(ValueError):
+                Scru128Id.from_str(e)
 
     def test_symmetric_converters(self) -> None:
         """Has symmetric converters from/to str, int, and fields"""
