@@ -15,6 +15,7 @@ import logging
 import re
 import secrets
 import threading
+import typing
 
 # Unix time in milliseconds at 2020-01-01 00:00:00+00:00.
 TIMESTAMP_BIAS = 1577836800000
@@ -126,20 +127,40 @@ class Scru128Id:
         return self._value >= value._value
 
 
+class DefaultRandom:
+    def getrandbits(self, k: int) -> int:
+        return secrets.randbits(k)
+
+
 class Scru128Generator:
     """
     Represents a SCRU128 ID generator that encapsulates the monotonic counter and other
     internal states.
     """
 
-    def __init__(self) -> None:
-        """Creates a generator object."""
+    def __init__(self, *, rng: typing.Any = None) -> None:
+        """
+        Creates a generator object with the default random number generator, or with the
+        specified one if passed as an argument. The specified random number generator
+        should be cryptographically strong and securely seeded.
+
+        Args:
+            rng: Any object that implements a k-bit random unsigned integer generation
+                 method: `getrandbits(k: int) -> int`. The interface is compatible with
+                 random.Random and random.SystemRandom.
+        """
         self._ts_last_gen = 0
         self._counter = 0
         self._ts_last_sec = 0
         self._per_sec_random = 0
         self._n_clock_check_max = 1_000_000
         self._lock = threading.Lock()
+        if rng is None:
+            self._rng = DefaultRandom()
+        elif callable(getattr(rng, "getrandbits", None)):
+            self._rng = rng
+        else:
+            raise TypeError("rng does not implement getrandbits()")
 
     def generate(self) -> Scru128Id:
         """
@@ -156,7 +177,7 @@ class Scru128Generator:
         ts_now = int(datetime.datetime.now().timestamp() * 1000)
         if ts_now > self._ts_last_gen:
             self._ts_last_gen = ts_now
-            self._counter = secrets.randbits(28)
+            self._counter = self._rng.getrandbits(28)
         else:
             self._counter += 1
             if self._counter > MAX_COUNTER:
@@ -172,18 +193,18 @@ class Scru128Generator:
                         break
 
                 self._ts_last_gen = ts_now
-                self._counter = secrets.randbits(28)
+                self._counter = self._rng.getrandbits(28)
 
         # update per_sec_random
         if self._ts_last_gen - self._ts_last_sec > 1000:
             self._ts_last_sec = self._ts_last_gen
-            self._per_sec_random = secrets.randbits(24)
+            self._per_sec_random = self._rng.getrandbits(24)
 
         return Scru128Id.from_fields(
             self._ts_last_gen - TIMESTAMP_BIAS,
             self._counter,
             self._per_sec_random,
-            secrets.randbits(32),
+            self._rng.getrandbits(32),
         )
 
 
