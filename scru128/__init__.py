@@ -38,7 +38,7 @@ class Scru128Id:
         """Creates an object from a 128-bit unsigned integer."""
         self._value = int_value
         if not (0 <= int_value <= 0xFFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF):
-            raise ValueError(f"not a 128-bit unsigned integer: {int_value}")
+            raise ValueError("not a 128-bit unsigned integer")
 
     @classmethod
     def from_fields(
@@ -63,7 +63,7 @@ class Scru128Id:
     def from_str(cls, str_value: str) -> Scru128Id:
         """Creates an object from a 26-digit string representation."""
         if re.match(r"^[0-7][0-9A-Va-v]{25}$", str_value) is None:
-            raise ValueError(f"invalid string representation: {str_value}")
+            raise ValueError("invalid string representation")
         return cls(int(str_value, 32))
 
     def __int__(self) -> int:
