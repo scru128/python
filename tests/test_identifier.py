@@ -6,10 +6,10 @@ import unittest
 
 from scru128 import Scru128Generator, Scru128Id
 
-MAX_UINT44 = 2 ** 44 - 1
-MAX_UINT28 = 2 ** 28 - 1
-MAX_UINT24 = 2 ** 24 - 1
-MAX_UINT32 = 2 ** 32 - 1
+MAX_UINT44 = 2**44 - 1
+MAX_UINT28 = 2**28 - 1
+MAX_UINT24 = 2**24 - 1
+MAX_UINT32 = 2**32 - 1
 
 
 class TestIdentifier(unittest.TestCase):
