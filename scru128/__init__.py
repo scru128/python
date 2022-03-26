@@ -7,7 +7,6 @@ __all__ = [
     "scru128_string",
     "Scru128Generator",
     "Scru128Id",
-    "TIMESTAMP_BIAS",
 ]
 
 import datetime
@@ -15,21 +14,23 @@ import logging
 import re
 import secrets
 import threading
+import time
 import typing
 
-# Unix time in milliseconds at 2020-01-01 00:00:00+00:00.
-TIMESTAMP_BIAS = 1577836800000
 
-# Maximum value of 28-bit counter field.
-MAX_COUNTER = 0xFFF_FFFF
+# Maximum value of 24-bit counter_hi field.
+MAX_COUNTER_HI = 0xFF_FFFF
 
-# Digit characters used in the base 32 notation.
-DIGITS = "0123456789ABCDEFGHIJKLMNOPQRSTUV"
+# Maximum value of 24-bit counter_lo field.
+MAX_COUNTER_LO = 0xFF_FFFF
+
+# Digit characters used in the Base36 notation.
+DIGITS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
 class Scru128Id:
     """
-    Represents a SCRU128 ID and provides various converters and comparison operators.
+    Represents a SCRU128 ID and provides converters and comparison operators.
     """
 
     __slots__ = "_value"
@@ -42,29 +43,26 @@ class Scru128Id:
 
     @classmethod
     def from_fields(
-        cls, timestamp: int, counter: int, per_sec_random: int, per_gen_random: int
+        cls, timestamp: int, counter_hi: int, counter_lo: int, entropy: int
     ) -> Scru128Id:
         """Creates an object from field values."""
         if not (
-            0 <= timestamp <= 0xFFF_FFFF_FFFF
-            and 0 <= counter <= MAX_COUNTER
-            and 0 <= per_sec_random <= 0xFF_FFFF
-            and 0 <= per_gen_random <= 0xFFFF_FFFF
+            0 <= timestamp <= 0xFFFF_FFFF_FFFF
+            and 0 <= counter_hi <= MAX_COUNTER_HI
+            and 0 <= counter_lo <= MAX_COUNTER_LO
+            and 0 <= entropy <= 0xFFFF_FFFF
         ):
             raise ValueError("invalid field value")
         return cls(
-            (timestamp << 84)
-            | (counter << 56)
-            | (per_sec_random << 32)
-            | per_gen_random
+            (timestamp << 80) | (counter_hi << 56) | (counter_lo << 32) | entropy
         )
 
     @classmethod
     def from_str(cls, str_value: str) -> Scru128Id:
-        """Creates an object from a 26-digit string representation."""
-        if re.match(r"^[0-7][0-9A-Va-v]{25}$", str_value) is None:
+        """Creates an object from a 25-digit string representation."""
+        if re.match(r"^[0-9A-Za-z]{25}$", str_value) is None:
             raise ValueError("invalid string representation")
-        return cls(int(str_value, 32))
+        return cls(int(str_value, 36))
 
     def __int__(self) -> int:
         """Returns the 128-bit unsigned integer representation."""
@@ -72,28 +70,32 @@ class Scru128Id:
 
     @property
     def timestamp(self) -> int:
-        """Returns the 44-bit millisecond timestamp field value."""
-        return (self._value >> 84) & 0xFFF_FFFF_FFFF
+        """Returns the 48-bit timestamp field value."""
+        return (self._value >> 80) & 0xFFFF_FFFF_FFFF
 
     @property
-    def counter(self) -> int:
-        """Returns the 28-bit per-timestamp monotonic counter field value."""
-        return (self._value >> 56) & MAX_COUNTER
+    def counter_hi(self) -> int:
+        """Returns the 24-bit counter_hi field value."""
+        return (self._value >> 56) & MAX_COUNTER_HI
 
     @property
-    def per_sec_random(self) -> int:
-        """Returns the 24-bit per-second randomness field value."""
-        return (self._value >> 32) & 0xFF_FFFF
+    def counter_lo(self) -> int:
+        """Returns the 24-bit counter_lo field value."""
+        return (self._value >> 32) & MAX_COUNTER_LO
 
     @property
-    def per_gen_random(self) -> int:
-        """Returns the 32-bit per-generation randomness field value."""
+    def entropy(self) -> int:
+        """Returns the 32-bit entropy field value."""
         return self._value & 0xFFFF_FFFF
 
     def __str__(self) -> str:
-        """Returns the 26-digit canonical string representation."""
-        cache = self._value
-        return "".join([DIGITS[(cache >> i) & 31] for i in range(125, -1, -5)])
+        """Returns the 25-digit canonical string representation."""
+        buffer = ["0"] * 25
+        n = self._value
+        for i in range(25):
+            (n, rem) = divmod(n, 36)
+            buffer[24 - i] = DIGITS[rem]
+        return "".join(buffer)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(0x{self._value:032X})"
@@ -134,7 +136,7 @@ class DefaultRandom:
 
 class Scru128Generator:
     """
-    Represents a SCRU128 ID generator that encapsulates the monotonic counter and other
+    Represents a SCRU128 ID generator that encapsulates the monotonic counters and other
     internal states.
     """
 
@@ -149,11 +151,10 @@ class Scru128Generator:
                  method: `getrandbits(k: int) -> int`. The interface is compatible with
                  random.Random and random.SystemRandom.
         """
-        self._ts_last_gen = 0
-        self._counter = 0
-        self._ts_last_sec = 0
-        self._per_sec_random = 0
-        self._n_clock_check_max = 1_000_000
+        self._timestamp = 0
+        self._counter_hi = 0
+        self._counter_lo = 0
+        self._ts_counter_hi = 0
         self._lock = threading.Lock()
         if rng is None:
             self._rng = DefaultRandom()
@@ -173,39 +174,46 @@ class Scru128Generator:
 
     def _generate_thread_unsafe(self) -> Scru128Id:
         """Generates a new SCRU128 ID object without overhead for thread safety."""
-        # update timestamp and counter
-        ts_now = int(datetime.datetime.now().timestamp() * 1000)
-        if ts_now > self._ts_last_gen:
-            self._ts_last_gen = ts_now
-            self._counter = self._rng.getrandbits(28)
+        ts = int(datetime.datetime.now().timestamp() * 1000)
+        if ts > self._timestamp:
+            self._timestamp = ts
+            self._counter_lo = self._rng.getrandbits(24)
+            if ts - self._ts_counter_hi >= 1000:
+                self._ts_counter_hi = ts
+                self._counter_hi = self._rng.getrandbits(24)
         else:
-            self._counter += 1
-            if self._counter > MAX_COUNTER:
-                logger = logging.getLogger("scru128")
-                logger.info("counter limit reached; will wait until clock goes forward")
-                n_clock_check = 0
-                while ts_now <= self._ts_last_gen:
-                    ts_now = int(datetime.datetime.now().timestamp() * 1000)
-                    n_clock_check += 1
-                    if n_clock_check > self._n_clock_check_max:
-                        logger.warning("reset state as clock did not go forward")
-                        self._ts_last_sec = 0
-                        break
-
-                self._ts_last_gen = ts_now
-                self._counter = self._rng.getrandbits(28)
-
-        # update per_sec_random
-        if self._ts_last_gen - self._ts_last_sec > 1000:
-            self._ts_last_sec = self._ts_last_gen
-            self._per_sec_random = self._rng.getrandbits(24)
+            self._counter_lo += 1
+            if self._counter_lo > MAX_COUNTER_LO:
+                self._counter_lo = 0
+                self._counter_hi += 1
+                if self._counter_hi > MAX_COUNTER_HI:
+                    self._counter_hi = 0
+                    self._handle_counter_overflow()
+                    return self._generate_thread_unsafe()
 
         return Scru128Id.from_fields(
-            self._ts_last_gen - TIMESTAMP_BIAS,
-            self._counter,
-            self._per_sec_random,
+            self._timestamp,
+            self._counter_hi,
+            self._counter_lo,
             self._rng.getrandbits(32),
         )
+
+    def _handle_counter_overflow(self) -> None:
+        """
+        Defines the behavior on counter overflow.
+
+        Currently, this method waits for the next clock tick and, if the clock does not
+        move forward for a while, reinitializes the generator state.
+        """
+        logger = logging.getLogger("scru128")
+        logger.warn("counter overflowing; will wait for next clock tick")
+        self._ts_counter_hi = 0
+        for _ in range(10_000):
+            time.sleep(0.0001)  # 100 microseconds
+            if int(datetime.datetime.now().timestamp() * 1000) > self._timestamp:
+                return
+        logger.warn("reset state as clock did not move for a while")
+        self._timestamp = 0
 
 
 default_generator = Scru128Generator()
@@ -222,7 +230,7 @@ def scru128() -> Scru128Id:
 
 def scru128_string() -> str:
     """
-    Generates a new SCRU128 ID encoded in the 26-digit canonical string representation.
+    Generates a new SCRU128 ID encoded in the 25-digit canonical string representation.
 
     This function is thread safe. Use this to quickly get a new SCRU128 ID as a string.
     """

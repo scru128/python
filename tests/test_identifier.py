@@ -6,8 +6,7 @@ import unittest
 
 from scru128 import Scru128Generator, Scru128Id
 
-MAX_UINT44 = 2**44 - 1
-MAX_UINT28 = 2**28 - 1
+MAX_UINT48 = 2**48 - 1
 MAX_UINT24 = 2**24 - 1
 MAX_UINT32 = 2**32 - 1
 
@@ -16,37 +15,37 @@ class TestIdentifier(unittest.TestCase):
     def test_encode_decode(self) -> None:
         """Encodes and decodes prepared cases correctly"""
         cases = [
-            ((0, 0, 0, 0), "00000000000000000000000000"),
-            ((MAX_UINT44, 0, 0, 0), "7VVVVVVVVG0000000000000000"),
-            ((MAX_UINT44, 0, 0, 0), "7vvvvvvvvg0000000000000000"),
-            ((0, MAX_UINT28, 0, 0), "000000000FVVVVU00000000000"),
-            ((0, MAX_UINT28, 0, 0), "000000000fvvvvu00000000000"),
-            ((0, 0, MAX_UINT24, 0), "000000000000001VVVVS000000"),
-            ((0, 0, MAX_UINT24, 0), "000000000000001vvvvs000000"),
-            ((0, 0, 0, MAX_UINT32), "00000000000000000003VVVVVV"),
-            ((0, 0, 0, MAX_UINT32), "00000000000000000003vvvvvv"),
+            ((0, 0, 0, 0), "0000000000000000000000000"),
+            ((MAX_UINT48, 0, 0, 0), "F5LXX1ZZ5K6TP71GEEH2DB7K0"),
+            ((MAX_UINT48, 0, 0, 0), "f5lxx1zz5k6tp71geeh2db7k0"),
+            ((0, MAX_UINT24, 0, 0), "0000000005GV2R2KJWR7N8XS0"),
+            ((0, MAX_UINT24, 0, 0), "0000000005gv2r2kjwr7n8xs0"),
+            ((0, 0, MAX_UINT24, 0), "00000000000000JPIA7QL4HS0"),
+            ((0, 0, MAX_UINT24, 0), "00000000000000jpia7ql4hs0"),
+            ((0, 0, 0, MAX_UINT32), "0000000000000000001Z141Z3"),
+            ((0, 0, 0, MAX_UINT32), "0000000000000000001z141z3"),
             (
-                (MAX_UINT44, MAX_UINT28, MAX_UINT24, MAX_UINT32),
-                "7VVVVVVVVVVVVVVVVVVVVVVVVV",
+                (MAX_UINT48, MAX_UINT24, MAX_UINT24, MAX_UINT32),
+                "F5LXX1ZZ5PNORYNQGLHZMSP33",
             ),
             (
-                (MAX_UINT44, MAX_UINT28, MAX_UINT24, MAX_UINT32),
-                "7vvvvvvvvvvvvvvvvvvvvvvvvv",
+                (MAX_UINT48, MAX_UINT24, MAX_UINT24, MAX_UINT32),
+                "f5lxx1zz5pnorynqglhzmsp33",
             ),
         ]
 
         for e in cases:
             from_fields = Scru128Id.from_fields(*e[0])
             from_string = Scru128Id.from_str(e[1])
-            self.assertEqual(int(from_fields), int(e[1], 32))
-            self.assertEqual(int(from_string), int(e[1], 32))
+            self.assertEqual(int(from_fields), int(e[1], 36))
+            self.assertEqual(int(from_string), int(e[1], 36))
             self.assertEqual(
                 (
                     (
                         from_fields.timestamp,
-                        from_fields.counter,
-                        from_fields.per_sec_random,
-                        from_fields.per_gen_random,
+                        from_fields.counter_hi,
+                        from_fields.counter_lo,
+                        from_fields.entropy,
                     ),
                     str(from_fields),
                 ),
@@ -56,9 +55,9 @@ class TestIdentifier(unittest.TestCase):
                 (
                     (
                         from_string.timestamp,
-                        from_string.counter,
-                        from_string.per_sec_random,
-                        from_string.per_gen_random,
+                        from_string.counter_hi,
+                        from_string.counter_lo,
+                        from_string.entropy,
                     ),
                     str(from_string),
                 ),
@@ -69,19 +68,18 @@ class TestIdentifier(unittest.TestCase):
         """Raises error if an invalid string representation is supplied"""
         cases = [
             "",
-            " 00SCT4FL89GQPRHN44C4LFM0OV",
-            "00SCT4FL89GQPRJN44C7SQO381 ",
-            " 00SCT4FL89GQPRLN44C4BGCIIO ",
-            "+00SCT4FL89GQPRNN44C4F3QD24",
-            "-00SCT4FL89GQPRPN44C7H4E5RC",
-            "+0SCT4FL89GQPRRN44C55Q7RVC",
-            "-0SCT4FL89GQPRTN44C6PN0A2R",
-            "00SCT4FL89WQPRVN44C41RGVMM",
-            "00SCT4FL89GQPS1N4_C54QDC5O",
-            "00SCT4-L89GQPS3N44C602O0K8",
-            "00SCT4FL89GQPS N44C7VHS5QJ",
-            "80000000000000000000000000",
-            "VVVVVVVVVVVVVVVVVVVVVVVVVV",
+            " 036Z8PUQ4TSXSIGK6O19Y164Q",
+            "036Z8PUQ54QNY1VQ3HCBRKWEB ",
+            " 036Z8PUQ54QNY1VQ3HELIVWAX ",
+            "+036Z8PUQ54QNY1VQ3HFCV3SS0",
+            "-036Z8PUQ54QNY1VQ3HHY8U1CH",
+            "+36Z8PUQ54QNY1VQ3HJQ48D9P",
+            "-36Z8PUQ5A7J0TI08OZ6ZDRDY",
+            "036Z8PUQ5A7J0T_08P2CDZ28V",
+            "036Z8PU-5A7J0TI08P3OL8OOL",
+            "036Z8PUQ5A7J0TI08P4J 6CYA",
+            "F5LXX1ZZ5PNORYNQGLHZMSP34",
+            "ZZZZZZZZZZZZZZZZZZZZZZZZZ",
         ]
 
         for e in cases:
@@ -92,11 +90,11 @@ class TestIdentifier(unittest.TestCase):
         """Has symmetric converters from/to various values"""
         cases = [
             Scru128Id.from_fields(0, 0, 0, 0),
-            Scru128Id.from_fields(MAX_UINT44, 0, 0, 0),
-            Scru128Id.from_fields(0, MAX_UINT28, 0, 0),
+            Scru128Id.from_fields(MAX_UINT48, 0, 0, 0),
+            Scru128Id.from_fields(0, MAX_UINT24, 0, 0),
             Scru128Id.from_fields(0, 0, MAX_UINT24, 0),
             Scru128Id.from_fields(0, 0, 0, MAX_UINT32),
-            Scru128Id.from_fields(MAX_UINT44, MAX_UINT28, MAX_UINT24, MAX_UINT32),
+            Scru128Id.from_fields(MAX_UINT48, MAX_UINT24, MAX_UINT24, MAX_UINT32),
         ]
 
         g = Scru128Generator()
@@ -108,7 +106,7 @@ class TestIdentifier(unittest.TestCase):
             self.assertEqual(Scru128Id(int(e)), e)
             self.assertEqual(
                 Scru128Id.from_fields(
-                    e.timestamp, e.counter, e.per_sec_random, e.per_gen_random
+                    e.timestamp, e.counter_hi, e.counter_lo, e.entropy
                 ),
                 e,
             )
@@ -122,7 +120,7 @@ class TestIdentifier(unittest.TestCase):
             Scru128Id.from_fields(0, 0, 1, 0),
             Scru128Id.from_fields(0, 0, MAX_UINT24, 0),
             Scru128Id.from_fields(0, 1, 0, 0),
-            Scru128Id.from_fields(0, MAX_UINT28, 0, 0),
+            Scru128Id.from_fields(0, MAX_UINT24, 0, 0),
             Scru128Id.from_fields(1, 0, 0, 0),
             Scru128Id.from_fields(2, 0, 0, 0),
         ]
