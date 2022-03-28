@@ -134,6 +134,10 @@ class DefaultRandom:
         return secrets.randbits(k)
 
 
+class CounterOverflowError(Exception):
+    """Error thrown when the monotonic counters can no more be incremented."""
+
+
 class Scru128Generator:
     """
     Represents a SCRU128 ID generator that encapsulates the monotonic counters and other
@@ -170,10 +174,17 @@ class Scru128Generator:
         This method is thread safe; multiple threads can call it concurrently.
         """
         with self._lock:
-            return self._generate_thread_unsafe()
+            while True:
+                try:
+                    return self._generate_core()
+                except CounterOverflowError:
+                    self._handle_counter_overflow()
 
-    def _generate_thread_unsafe(self) -> Scru128Id:
-        """Generates a new SCRU128 ID object without overhead for thread safety."""
+    def _generate_core(self) -> Scru128Id:
+        """
+        Generates a new SCRU128 ID object, while delegating the caller to take care of
+        thread safety and counter overflows.
+        """
         ts = int(datetime.datetime.now().timestamp() * 1000)
         if ts > self._timestamp:
             self._timestamp = ts
@@ -188,8 +199,7 @@ class Scru128Generator:
                 self._counter_hi += 1
                 if self._counter_hi > MAX_COUNTER_HI:
                     self._counter_hi = 0
-                    self._handle_counter_overflow()
-                    return self._generate_thread_unsafe()
+                    raise CounterOverflowError()
 
         return Scru128Id.from_fields(
             self._timestamp,
