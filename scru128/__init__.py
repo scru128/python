@@ -10,11 +10,9 @@ __all__ = [
 ]
 
 import datetime
-import logging
 import re
 import secrets
 import threading
-import time
 import typing
 
 
@@ -134,10 +132,6 @@ class DefaultRandom:
         return secrets.randbits(k)
 
 
-class CounterOverflowError(Exception):
-    """Error thrown when the monotonic counters can no more be incremented."""
-
-
 class Scru128Generator:
     """
     Represents a SCRU128 ID generator that encapsulates the monotonic counters and other
@@ -174,32 +168,33 @@ class Scru128Generator:
         This method is thread safe; multiple threads can call it concurrently.
         """
         with self._lock:
-            while True:
-                try:
-                    return self._generate_core()
-                except CounterOverflowError:
-                    self._handle_counter_overflow()
+            return self._generate_thread_unsafe()
 
-    def _generate_core(self) -> Scru128Id:
-        """
-        Generates a new SCRU128 ID object, while delegating the caller to take care of
-        thread safety and counter overflows.
-        """
-        ts = int(datetime.datetime.now().timestamp() * 1000)
+    def _generate_thread_unsafe(self) -> Scru128Id:
+        """Generates a new SCRU128 ID object without overhead for thread safety."""
+        ts = int(datetime.datetime.now().timestamp() * 1_000)
         if ts > self._timestamp:
             self._timestamp = ts
             self._counter_lo = self._rng.getrandbits(24)
-            if ts - self._ts_counter_hi >= 1000:
-                self._ts_counter_hi = ts
-                self._counter_hi = self._rng.getrandbits(24)
-        else:
+        elif ts + 10_000 > self._timestamp:
             self._counter_lo += 1
             if self._counter_lo > MAX_COUNTER_LO:
                 self._counter_lo = 0
                 self._counter_hi += 1
                 if self._counter_hi > MAX_COUNTER_HI:
                     self._counter_hi = 0
-                    raise CounterOverflowError()
+                    # increment timestamp at counter overflow
+                    self._timestamp += 1
+                    self._counter_lo = self._rng.getrandbits(24)
+        else:
+            # reset state if clock moves back more than ten seconds
+            self._ts_counter_hi = 0
+            self._timestamp = ts
+            self._counter_lo = self._rng.getrandbits(24)
+
+        if self._timestamp - self._ts_counter_hi >= 1_000:
+            self._ts_counter_hi = self._timestamp
+            self._counter_hi = self._rng.getrandbits(24)
 
         return Scru128Id.from_fields(
             self._timestamp,
@@ -207,23 +202,6 @@ class Scru128Generator:
             self._counter_lo,
             self._rng.getrandbits(32),
         )
-
-    def _handle_counter_overflow(self) -> None:
-        """
-        Defines the behavior on counter overflow.
-
-        Currently, this method waits for the next clock tick and, if the clock does not
-        move forward for a while, reinitializes the generator state.
-        """
-        logger = logging.getLogger("scru128")
-        logger.warn("counter overflowing; will wait for next clock tick")
-        self._ts_counter_hi = 0
-        for _ in range(10_000):
-            time.sleep(0.0001)  # 100 microseconds
-            if int(datetime.datetime.now().timestamp() * 1000) > self._timestamp:
-                return
-        logger.warn("reset state as clock did not move for a while")
-        self._timestamp = 0
 
 
 default_generator = Scru128Generator()

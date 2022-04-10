@@ -9,15 +9,16 @@
   24 bits, `per_gen_random`: 32 bits } -> { `timestamp`: 48 bits, `counter_hi`:
   24 bits, `counter_lo`: 24 bits, `entropy`: 32 bits }
 - Timestamp epoch: 2020-01-01 00:00:00.000 UTC -> 1970-01-01 00:00:00.000 UTC
-
-### Added
-
-- `Scru128Id#counter_hi()`, `Scru128Id#counter_lo()`, `Scru128Id#entropy()`
+- Counter overflow handling: stall generator -> increment timestamp
 
 ### Removed
 
 - `TIMESTAMP_BIAS`
 - `Scru128Id#counter()`, `Scru128Id#per_sec_random()`, `Scru128Id#per_gen_random()`
+
+### Added
+
+- `Scru128Id#counter_hi()`, `Scru128Id#counter_lo()`, `Scru128Id#entropy()`
 
 ## v1.0.1 - 2022-03-20
 
