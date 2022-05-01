@@ -20,10 +20,10 @@ class TestScru128String(unittest.TestCase):
         cls._samples = [scru128_string() for _ in range(100_000)]
 
     def test_format(self) -> None:
-        """Generates 26-digit canonical string"""
+        """Generates 25-digit canonical string"""
         for e in self._samples:
             self.assertEqual(type(e), str)
-            self.assertRegex(e, r"^[0-7][0-9A-V]{25}$")
+            self.assertRegex(e, r"^[0-9A-Z]{25}$")
 
     def test_uniqueness(self) -> None:
         """Generates 100k identifiers without collision"""
@@ -36,23 +36,27 @@ class TestScru128String(unittest.TestCase):
 
     def test_timestamp(self) -> None:
         """Encodes up-to-date timestamp"""
-        epoch = int(
-            datetime.datetime(2020, 1, 1, tzinfo=datetime.timezone.utc).timestamp()
-            * 1000
-        )
         g = Scru128Generator()
         for i in range(10_000):
-            ts_now = int(datetime.datetime.now().timestamp() * 1000) - epoch
+            ts_now = int(datetime.datetime.now().timestamp() * 1000)
             timestamp = g.generate().timestamp
             self.assertLess(abs(ts_now - timestamp), 16)
 
-    def test_timestamp_and_counter(self) -> None:
-        """Encodes unique sortable pair of timestamp and counter"""
+    def test_timestamp_and_counters(self) -> None:
+        """Encodes unique sortable tuple of timestamp and counters"""
         prev = Scru128Id.from_str(self._samples[0])
         for e in self._samples[1:]:
             curr = Scru128Id.from_str(e)
             self.assertTrue(
                 prev.timestamp < curr.timestamp
-                or (prev.timestamp == curr.timestamp and prev.counter < curr.counter)
+                or (
+                    prev.timestamp == curr.timestamp
+                    and prev.counter_hi < curr.counter_hi
+                )
+                or (
+                    prev.timestamp == curr.timestamp
+                    and prev.counter_hi == curr.counter_hi
+                    and prev.counter_lo < curr.counter_lo
+                )
             )
             prev = curr

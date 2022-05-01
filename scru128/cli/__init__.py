@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import argparse
 import datetime
-import re
 import sys
 
-from .. import scru128, Scru128Id, TIMESTAMP_BIAS
+from .. import scru128, Scru128Id
 
 
 def generate() -> None:
@@ -38,18 +37,15 @@ def inspect() -> None:
         help="read identifiers from file",
     )
 
-    pattern = re.compile(r"^[0-7][0-9A-Va-v]{25}$")
-
     args = parser.parse_args()
     try:
         for line in args.file:
             line = line.strip()
-            if line == "":
-                continue
-            elif pattern.match(line):
-                print(_inspect_id(line))
-            else:
-                print("warning: skipped invalid identifier:", line, file=sys.stderr)
+            if line != "":
+                try:
+                    print(_inspect_id(line))
+                except ValueError:
+                    print("warning: skipped invalid identifier:", line, file=sys.stderr)
     except KeyboardInterrupt:
         sys.exit(1)
 
@@ -57,10 +53,10 @@ def inspect() -> None:
 def _inspect_id(src: str) -> str:
     obj = Scru128Id.from_str(src)
     timestamp_iso = datetime.datetime.fromtimestamp(
-        (obj.timestamp + TIMESTAMP_BIAS) / 1000, tz=datetime.timezone.utc
+        obj.timestamp / 1000, tz=datetime.timezone.utc
     ).isoformat(timespec="milliseconds")
-    fields_hex = '["{:011x}", "{:07x}", "{:06x}", "{:08x}"]'.format(
-        obj.timestamp, obj.counter, obj.per_sec_random, obj.per_gen_random
+    fields_hex = '["{:012x}", "{:06x}", "{:06x}", "{:08x}"]'.format(
+        obj.timestamp, obj.counter_hi, obj.counter_lo, obj.entropy
     )
 
     return "\n".join(
@@ -70,9 +66,9 @@ def _inspect_id(src: str) -> str:
             f'  "canonical":    "{obj}",',
             f'  "timestampIso": "{timestamp_iso}",',
             f'  "timestamp":    "{obj.timestamp}",',
-            f'  "counter":      "{obj.counter}",',
-            f'  "perSecRandom": "{obj.per_sec_random}",',
-            f'  "perGenRandom": "{obj.per_gen_random}",',
+            f'  "counterHi":    "{obj.counter_hi}",',
+            f'  "counterLo":    "{obj.counter_lo}",',
+            f'  "entropy":      "{obj.entropy}",',
             f'  "fieldsHex":    {fields_hex}',
             "}",
         )

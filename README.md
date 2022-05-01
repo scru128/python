@@ -3,27 +3,27 @@
 [![PyPI](https://img.shields.io/pypi/v/scru128)](https://pypi.org/project/scru128/)
 [![License](https://img.shields.io/pypi/l/scru128)](https://github.com/scru128/python/blob/main/LICENSE)
 
-SCRU128 ID is yet another attempt to supersede [UUID] in the use cases that need
+SCRU128 ID is yet another attempt to supersede [UUID] for the users who need
 decentralized, globally unique time-ordered identifiers. SCRU128 is inspired by
 [ULID] and [KSUID] and has the following features:
 
 - 128-bit unsigned integer type
 - Sortable by generation time (as integer and as text)
-- 26-digit case-insensitive portable textual representation
-- 44-bit biased millisecond timestamp that ensures remaining life of 550 years
-- Up to 268 million time-ordered but unpredictable unique IDs per millisecond
-- 84-bit _layered_ randomness for collision resistance
+- 25-digit case-insensitive textual representation (Base36)
+- 48-bit millisecond Unix timestamp that ensures useful life until year 10889
+- Up to 281 trillion time-ordered but unpredictable unique IDs per millisecond
+- 80-bit three-layer randomness for global uniqueness
 
 ```python
 from scru128 import scru128, scru128_string
 
 # generate a new identifier object
 x = scru128()
-print(x)  # e.g. "00S6GVKR1MH58KE72EJD87SDOO"
+print(x)  # e.g. "036Z951MHJIKZIK2GSL81GR7L"
 print(int(x))  # as a 128-bit unsigned integer
 
 # generate a textual representation directly
-print(scru128_string())  # e.g. "00S6GVKR3F7R79I72EJF0J4RGC"
+print(scru128_string())  # e.g. "036Z951MHZX67T63MQ9XE6Q0J"
 ```
 
 See [SCRU128 Specification] for details.
@@ -39,12 +39,12 @@ See [SCRU128 Specification] for details.
 
 ```bash
 $ scru128
-00PP7O1FIQFM7C7R8VBK61T94N
+036ZG4ZLMDWDZ8414EIM77VCT
 $ scru128 -n 4
-00PP7OKSN7T37CR12PEIJILTA1
-00PP7OKSN7T37CT12PEJKN2BNO
-00PP7OKSN7T37CV12PEH41TP72
-00PP7OKSN7T37D112PEI1L0HMS
+036ZG4ZLV707WNCZL108KY4I7
+036ZG4ZLV707WNCZL12TOWMHO
+036ZG4ZLV707WNCZL14HIRM6N
+036ZG4ZLV707WNCZL17110SHH
 ```
 
 `scru128-inspect` prints the components of given SCRU128 IDs as human- and
@@ -53,24 +53,24 @@ machine-readable JSON objects.
 ```bash
 $ scru128 -n 2 | scru128-inspect
 {
-  "input":        "00PP7OUAC22A7TO4VESB1R83L5",
-  "canonical":    "00PP7OUAC22A7TO4VESB1R83L5",
-  "timestampIso": "2021-10-02T23:38:47.832+00:00",
-  "timestamp":    "55381127832",
-  "counter":      "34770908",
-  "perSecRandom": "1306338",
-  "perGenRandom": "3283357349",
-  "fieldsHex":    ["00ce4f8f298", "2128fdc", "13eee2", "c3b40ea5"]
+  "input":        "036ZG552N91MT9S0GYHDWIF95",
+  "canonical":    "036ZG552N91MT9S0GYHDWIF95",
+  "timestampIso": "2022-03-20T08:34:01.493+00:00",
+  "timestamp":    "1647765241493",
+  "counterHi":    "10145723",
+  "counterLo":    "13179084",
+  "entropy":      "4167049657",
+  "fieldsHex":    ["017fa6763e95", "9acfbb", "c918cc", "f86021b9"]
 }
 {
-  "input":        "00PP7OUAC22A7TQ4VES9SKQH9U",
-  "canonical":    "00PP7OUAC22A7TQ4VES9SKQH9U",
-  "timestampIso": "2021-10-02T23:38:47.832+00:00",
-  "timestamp":    "55381127832",
-  "counter":      "34770909",
-  "perSecRandom": "1306338",
-  "perGenRandom": "2035107134",
-  "fieldsHex":    ["00ce4f8f298", "2128fdd", "13eee2", "794d453e"]
+  "input":        "036ZG552N91MT9S0GYJ7I56SJ",
+  "canonical":    "036ZG552N91MT9S0GYJ7I56SJ",
+  "timestampIso": "2022-03-20T08:34:01.493+00:00",
+  "timestamp":    "1647765241493",
+  "counterHi":    "10145723",
+  "counterLo":    "13179085",
+  "entropy":      "3838717859",
+  "fieldsHex":    ["017fa6763e95", "9acfbb", "c918cd", "e4ce2fa3"]
 }
 ```
 
