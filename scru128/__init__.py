@@ -10,11 +10,15 @@ __all__ = [
 ]
 
 import datetime
+import enum
 import re
 import secrets
 import threading
 import typing
 
+
+# Maximum value of 48-bit timestamp field.
+MAX_TIMESTAMP = 0xFFFF_FFFF_FFFF
 
 # Maximum value of 24-bit counter_hi field.
 MAX_COUNTER_HI = 0xFF_FFFF
@@ -45,7 +49,7 @@ class Scru128Id:
     ) -> Scru128Id:
         """Creates an object from field values."""
         if not (
-            0 <= timestamp <= 0xFFFF_FFFF_FFFF
+            0 <= timestamp <= MAX_TIMESTAMP
             and 0 <= counter_hi <= MAX_COUNTER_HI
             and 0 <= counter_lo <= MAX_COUNTER_LO
             and 0 <= entropy <= 0xFFFF_FFFF
@@ -69,7 +73,7 @@ class Scru128Id:
     @property
     def timestamp(self) -> int:
         """Returns the 48-bit timestamp field value."""
-        return (self._value >> 80) & 0xFFFF_FFFF_FFFF
+        return (self._value >> 80) & MAX_TIMESTAMP
 
     @property
     def counter_hi(self) -> int:
@@ -165,43 +169,90 @@ class Scru128Generator:
         """
         Generates a new SCRU128 ID object.
 
-        This method is thread safe; multiple threads can call it concurrently.
+        This method is thread-safe; multiple threads can call it concurrently.
         """
         with self._lock:
-            return self._generate_thread_unsafe()
+            timestamp = datetime.datetime.now().timestamp()
+            return self.generate_core(int(timestamp * 1_000))[0]
 
-    def _generate_thread_unsafe(self) -> Scru128Id:
-        """Generates a new SCRU128 ID object without overhead for thread safety."""
-        ts = int(datetime.datetime.now().timestamp() * 1_000)
-        if ts > self._timestamp:
-            self._timestamp = ts
+    def generate_core(
+        self, timestamp: int
+    ) -> tuple[Scru128Id, Scru128Generator.Status]:
+        """
+        Generates a new SCRU128 ID object with the timestamp passed.
+
+        Unlike `generate()`, this method is NOT thread-safe. The generator object should
+        be protected from concurrent accesses using a mutex or other synchronization
+        mechanism to avoid race conditions.
+
+        This method returns a generated ID and a `Status` code that indicates the
+        internal state involved in the generation. Callers can usually ignore the status
+        unless the monotonic order of generated IDs is critically important.
+        """
+        if not (0 <= timestamp <= MAX_TIMESTAMP):
+            raise ValueError("`timestamp` must be a 48-bit unsigned integer")
+
+        status = Scru128Generator.Status.NEW_TIMESTAMP
+        if timestamp > self._timestamp:
+            self._timestamp = timestamp
             self._counter_lo = self._rng.getrandbits(24)
-        elif ts + 10_000 > self._timestamp:
+        elif timestamp + 10_000 > self._timestamp:
             self._counter_lo += 1
+            status = Scru128Generator.Status.COUNTER_LO_INC
             if self._counter_lo > MAX_COUNTER_LO:
                 self._counter_lo = 0
                 self._counter_hi += 1
+                status = Scru128Generator.Status.COUNTER_HI_INC
                 if self._counter_hi > MAX_COUNTER_HI:
                     self._counter_hi = 0
                     # increment timestamp at counter overflow
                     self._timestamp += 1
                     self._counter_lo = self._rng.getrandbits(24)
+                    status = Scru128Generator.Status.TIMESTAMP_INC
         else:
-            # reset state if clock moves back more than ten seconds
+            # reset state if clock moves back by ten seconds or more
             self._ts_counter_hi = 0
-            self._timestamp = ts
+            self._timestamp = timestamp
             self._counter_lo = self._rng.getrandbits(24)
+            status = Scru128Generator.Status.CLOCK_ROLLBACK
 
         if self._timestamp - self._ts_counter_hi >= 1_000:
             self._ts_counter_hi = self._timestamp
             self._counter_hi = self._rng.getrandbits(24)
 
-        return Scru128Id.from_fields(
-            self._timestamp,
-            self._counter_hi,
-            self._counter_lo,
-            self._rng.getrandbits(32),
+        return (
+            Scru128Id.from_fields(
+                self._timestamp,
+                self._counter_hi,
+                self._counter_lo,
+                self._rng.getrandbits(32),
+            ),
+            status,
         )
+
+    class Status(enum.Enum):
+        """
+        Status code reported by `generate_core()` method.
+
+        Attributes:
+            NEW_TIMESTAMP: Indicates that the timestamp passed was used because it was
+                greater than the previous one.
+            COUNTER_LO_INC: Indicates that counter_lo was incremented because the
+                timestamp passed was no greater than the previous one.
+            COUNTER_HI_INC: Indicates that counter_hi was incremented because counter_lo
+                reached its maximum value.
+            TIMESTAMP_INC: Indicates that the previous timestamp was incremented because
+                counter_hi reached its maximum value.
+            CLOCK_ROLLBACK: Indicates that the monotonic order of generated IDs was
+                broken because the timestamp passed was less than the previous one by
+                ten seconds or more.
+        """
+
+        NEW_TIMESTAMP = enum.auto()
+        COUNTER_LO_INC = enum.auto()
+        COUNTER_HI_INC = enum.auto()
+        TIMESTAMP_INC = enum.auto()
+        CLOCK_ROLLBACK = enum.auto()
 
 
 default_generator = Scru128Generator()
@@ -211,7 +262,7 @@ def scru128() -> Scru128Id:
     """
     Generates a new SCRU128 ID object.
 
-    This function is thread safe; multiple threads can call it concurrently.
+    This function is thread-safe; multiple threads can call it concurrently.
     """
     return default_generator.generate()
 
@@ -220,6 +271,6 @@ def scru128_string() -> str:
     """
     Generates a new SCRU128 ID encoded in the 25-digit canonical string representation.
 
-    This function is thread safe. Use this to quickly get a new SCRU128 ID as a string.
+    This function is thread-safe. Use this to quickly get a new SCRU128 ID as a string.
     """
     return str(scru128())
