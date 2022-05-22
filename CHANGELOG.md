@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.1.0 - 2022-05-22
+
+### Added
+
+- `generate_core()` and `last_status` to Scru128Generator
+
 ## v2.0.0 - 2022-05-01
 
 ### Changed
