@@ -184,8 +184,8 @@ class Scru128Generator:
         be protected from concurrent accesses using a mutex or other synchronization
         mechanism to avoid race conditions.
         """
-        if not (0 <= timestamp <= MAX_TIMESTAMP):
-            raise ValueError("`timestamp` must be a 48-bit unsigned integer")
+        if not (1 <= timestamp <= MAX_TIMESTAMP):
+            raise ValueError("`timestamp` must be a 48-bit positive integer")
 
         self._last_status = Scru128Generator.Status.NEW_TIMESTAMP
         if timestamp > self._timestamp:
