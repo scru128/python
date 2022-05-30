@@ -211,7 +211,7 @@ class Scru128Generator:
             self._counter_lo = self._rng.getrandbits(24)
             self._last_status = Scru128Generator.Status.CLOCK_ROLLBACK
 
-        if self._timestamp - self._ts_counter_hi >= 1_000:
+        if self._timestamp - self._ts_counter_hi >= 1_000 or self._ts_counter_hi < 1:
             self._ts_counter_hi = self._timestamp
             self._counter_hi = self._rng.getrandbits(24)
 
