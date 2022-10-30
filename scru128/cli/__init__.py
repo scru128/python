@@ -6,7 +6,7 @@ import argparse
 import datetime
 import sys
 
-from .. import scru128, Scru128Id
+from .. import new, Scru128Id
 
 
 def generate() -> None:
@@ -21,7 +21,7 @@ def generate() -> None:
 
     args = parser.parse_args()
     for _ in range(args.n):
-        print(scru128())
+        print(new())
 
 
 def inspect() -> None:

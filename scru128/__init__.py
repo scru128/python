@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 __all__ = [
+    "new",
+    "new_string",
     "scru128",
     "scru128_string",
     "Scru128Generator",
@@ -15,6 +17,7 @@ import re
 import secrets
 import threading
 import typing
+import warnings
 
 
 # Maximum value of 48-bit timestamp field.
@@ -264,7 +267,7 @@ class Scru128Generator:
 default_generator = Scru128Generator()
 
 
-def scru128() -> Scru128Id:
+def new() -> Scru128Id:
     """
     Generates a new SCRU128 ID object.
 
@@ -273,10 +276,22 @@ def scru128() -> Scru128Id:
     return default_generator.generate()
 
 
-def scru128_string() -> str:
+def new_string() -> str:
     """
     Generates a new SCRU128 ID encoded in the 25-digit canonical string representation.
 
     This function is thread-safe. Use this to quickly get a new SCRU128 ID as a string.
     """
-    return str(scru128())
+    return str(new())
+
+
+def scru128() -> Scru128Id:
+    """Deprecated synonym for `new()` (deprecated since v2.2.0)."""
+    warnings.warn("use `scru128.new()` (synonym)", DeprecationWarning)
+    return new()
+
+
+def scru128_string() -> str:
+    """Deprecated synonym for `new_string()` (deprecated since v2.2.0)."""
+    warnings.warn("use `scru128.new_string()` (synonym)", DeprecationWarning)
+    return new_string()
