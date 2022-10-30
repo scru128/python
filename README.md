@@ -15,15 +15,15 @@ decentralized, globally unique time-ordered identifiers. SCRU128 is inspired by
 - 80-bit three-layer randomness for global uniqueness
 
 ```python
-from scru128 import scru128, scru128_string
+import scru128
 
 # generate a new identifier object
-x = scru128()
+x = scru128.new()
 print(x)  # e.g. "036Z951MHJIKZIK2GSL81GR7L"
 print(int(x))  # as a 128-bit unsigned integer
 
 # generate a textual representation directly
-print(scru128_string())  # e.g. "036Z951MHZX67T63MQ9XE6Q0J"
+print(scru128.new_string())  # e.g. "036Z951MHZX67T63MQ9XE6Q0J"
 ```
 
 See [SCRU128 Specification] for details.

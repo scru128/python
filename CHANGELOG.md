@@ -1,6 +1,15 @@
 # Changelog
 
-## Unreleased
+## v2.2.0 - unreleased
+
+### Added
+
+- `new()` and `new_string()`
+
+### Deprecated
+
+- `scru128()` and `scru128_string()` to promote `scru128.new()` syntax over
+  `from scru128 import scru128`
 
 ### Maintenance
 
