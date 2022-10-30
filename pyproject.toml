@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "scru128"
-version = "2.1.2"
+version = "2.2.0"
 description = "SCRU128: Sortable, Clock and Random number-based Unique identifier"
 license = "Apache-2.0"
 authors = ["LiosK <contact@mail.liosk.net>"]
