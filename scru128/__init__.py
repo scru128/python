@@ -237,6 +237,21 @@ class Scru128Generator:
         """
         return self._last_status
 
+    def __iter__(self) -> typing.Iterator[Scru128Id]:
+        """
+        Returns an infinite iterator object that produces a new ID for each call of
+        `next()`.
+        """
+        return self
+
+    def __next__(self) -> Scru128Id:
+        """
+        Returns a new SCRU128 ID object for each call, infinitely.
+
+        This method is a synonym for `generate()` to use `self` as an infinite iterator.
+        """
+        return self.generate()
+
     class Status(enum.Enum):
         """
         Status code returned by `last_status` property.
