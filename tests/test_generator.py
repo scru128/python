@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from scru128 import Scru128Generator
+from scru128 import Scru128Generator, Scru128Id
 
 
 class TestGenerator(unittest.TestCase):
@@ -41,3 +41,13 @@ class TestGenerator(unittest.TestCase):
         self.assertEqual(g.last_status, Scru128Generator.Status.CLOCK_ROLLBACK)
         self.assertGreater(prev, curr)
         self.assertEqual(curr.timestamp, ts - 10_000)
+
+    def test_iterable_implementation(self) -> None:
+        """Is iterable with for-in loop"""
+        i = 0
+        for e in Scru128Generator():
+            self.assertIsInstance(e, Scru128Id)
+            i += 1
+            if i > 100:
+                break
+        self.assertEqual(i, 101)

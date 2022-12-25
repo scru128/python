@@ -3,7 +3,6 @@ from __future__ import annotations
 import copy
 import unittest
 
-
 from scru128 import Scru128Generator, Scru128Id
 
 MAX_UINT48 = 2**48 - 1
