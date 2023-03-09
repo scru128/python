@@ -143,6 +143,22 @@ class Scru128Generator:
     """
     Represents a SCRU128 ID generator that encapsulates the monotonic counters and other
     internal states.
+
+    The generator offers four different methods to generate a SCRU128 ID:
+
+    | Flavor                  | Timestamp | Thread- | On big clock rewind |
+    | ----------------------- | --------- | ------- | ------------------- |
+    | generate                | Now       | Safe    | Rewinds state       |
+    | generate_no_rewind      | Now       | Safe    | Returns `None`      |
+    | generate_core           | Argument  | Unsafe  | Rewinds state       |
+    | generate_core_no_rewind | Argument  | Unsafe  | Returns `None`      |
+
+    Each method returns monotonically increasing IDs unless a `timestamp` provided is
+    significantly (by ten seconds or more) smaller than the one embedded in the
+    immediately preceding ID. If such a significant clock rollback is detected, the
+    standard `generate` rewinds the generator state and returns a new ID based on the
+    current `timestamp`, whereas `no_rewind` variants keep the state untouched and
+    return `None`. `core` functions offer low-level thread-unsafe primitives.
     """
 
     def __init__(self, *, rng: typing.Any = None) -> None:
@@ -173,13 +189,7 @@ class Scru128Generator:
         """
         Generates a new SCRU128 ID object from the current `timestamp`.
 
-        This method returns monotonically increasing IDs unless the up-to-date
-        `timestamp` is significantly (by ten seconds or more) smaller than the one
-        embedded in the immediately preceding ID. If such a significant clock rollback
-        is detected, this method rewinds the generator state and returns a new ID based
-        on the up-to-date `timestamp`.
-
-        This method is thread-safe; multiple threads can call it concurrently.
+        See the Scru128Generator class documentation for the description.
         """
         with self._lock:
             timestamp = datetime.datetime.now().timestamp()
@@ -190,12 +200,7 @@ class Scru128Generator:
         Generates a new SCRU128 ID object from the current `timestamp`, guaranteeing the
         monotonic order of generated IDs despite a significant timestamp rollback.
 
-        This method returns monotonically increasing IDs unless the up-to-date
-        `timestamp` is significantly (by ten seconds or more) smaller than the one
-        embedded in the immediately preceding ID. If such a significant clock rollback
-        is detected, this method returns `None` and keeps the generator state untouched.
-
-        This method is thread-safe; multiple threads can call it concurrently.
+        See the Scru128Generator class documentation for the description.
         """
         with self._lock:
             timestamp = datetime.datetime.now().timestamp()
@@ -205,11 +210,7 @@ class Scru128Generator:
         """
         Generates a new SCRU128 ID object from the `timestamp` passed.
 
-        This method returns monotonically increasing IDs unless a given `timestamp` is
-        significantly (by ten seconds or more) smaller than the one embedded in the
-        immediately preceding ID. If such a significant clock rollback is detected, this
-        method rewinds the generator state and returns a new ID based on the given
-        argument.
+        See the Scru128Generator class documentation for the description.
 
         Unlike `generate()`, this method is NOT thread-safe. The generator object should
         be protected from concurrent accesses using a mutex or other synchronization
@@ -230,10 +231,7 @@ class Scru128Generator:
         Generates a new SCRU128 ID object from the `timestamp` passed, guaranteeing the
         monotonic order of generated IDs despite a significant timestamp rollback.
 
-        This method returns monotonically increasing IDs unless a given `timestamp` is
-        significantly (by ten seconds or more) smaller than the one embedded in the
-        immediately preceding ID. If such a significant clock rollback is detected, this
-        method returns `None` and keeps the generator state untouched.
+        See the Scru128Generator class documentation for the description.
 
         Unlike `generate_no_rewind()`, this method is NOT thread-safe. The generator
         object should be protected from concurrent accesses using a mutex or other
