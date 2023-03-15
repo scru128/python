@@ -334,21 +334,22 @@ class Scru128Generator:
         CLOCK_ROLLBACK = enum.auto()
 
 
-default_generator = Scru128Generator()
+global_generator = Scru128Generator()
 
 
 def new() -> Scru128Id:
     """
-    Generates a new SCRU128 ID object.
+    Generates a new SCRU128 ID object using the global generator.
 
     This function is thread-safe; multiple threads can call it concurrently.
     """
-    return default_generator.generate()
+    return global_generator.generate()
 
 
 def new_string() -> str:
     """
-    Generates a new SCRU128 ID encoded in the 25-digit canonical string representation.
+    Generates a new SCRU128 ID encoded in the 25-digit canonical string representation
+    using the global generator.
 
     This function is thread-safe. Use this to quickly get a new SCRU128 ID as a string.
     """
