@@ -20,13 +20,13 @@ import typing
 import warnings
 
 
-# Maximum value of 48-bit timestamp field.
+# The maximum value of 48-bit timestamp field.
 MAX_TIMESTAMP = 0xFFFF_FFFF_FFFF
 
-# Maximum value of 24-bit counter_hi field.
+# The maximum value of 24-bit counter_hi field.
 MAX_COUNTER_HI = 0xFF_FFFF
 
-# Maximum value of 24-bit counter_lo field.
+# The maximum value of 24-bit counter_lo field.
 MAX_COUNTER_LO = 0xFF_FFFF
 
 # Digit characters used in the Base36 notation.
@@ -309,7 +309,7 @@ class Scru128Generator:
 
     class Status(enum.Enum):
         """
-        Deprecated. Status code returned by `last_status` property.
+        Deprecated. The status code returned by `last_status` property.
 
         Attributes:
             NOT_EXECUTED: Indicates that the generator has yet to generate an ID.
