@@ -32,6 +32,9 @@ MAX_COUNTER_LO = 0xFF_FFFF
 # Digit characters used in the Base36 notation.
 DIGITS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
+# The default timestamp rollback allowance.
+DEFAULT_ROLLBACK_ALLOWANCE = 10_000  # 10 seconds
+
 
 class Scru128Id:
     """
@@ -154,8 +157,8 @@ class Scru128Generator:
     | generate_core_no_rewind | Argument  | Unsafe  | Returns `None`      |
 
     Each method returns monotonically increasing IDs unless a `timestamp` provided is
-    significantly (by ten seconds or more) smaller than the one embedded in the
-    immediately preceding ID. If such a significant clock rollback is detected, the
+    significantly (by ten seconds or more by default) smaller than the one embedded in
+    the immediately preceding ID. If such a significant clock rollback is detected, the
     standard `generate` rewinds the generator state and returns a new ID based on the
     current `timestamp`, whereas `no_rewind` variants keep the state untouched and
     return `None`. `core` functions offer low-level thread-unsafe primitives.
@@ -193,7 +196,9 @@ class Scru128Generator:
         """
         with self._lock:
             timestamp = datetime.datetime.now().timestamp()
-            return self.generate_core(int(timestamp * 1_000))
+            return self.generate_core(
+                int(timestamp * 1_000), DEFAULT_ROLLBACK_ALLOWANCE
+            )
 
     def generate_no_rewind(self) -> typing.Optional[Scru128Id]:
         """
@@ -204,49 +209,63 @@ class Scru128Generator:
         """
         with self._lock:
             timestamp = datetime.datetime.now().timestamp()
-            return self.generate_core_no_rewind(int(timestamp * 1_000))
+            return self.generate_core_no_rewind(
+                int(timestamp * 1_000), DEFAULT_ROLLBACK_ALLOWANCE
+            )
 
-    def generate_core(self, timestamp: int) -> Scru128Id:
+    def generate_core(
+        self, timestamp: int, rollback_allowance: int = DEFAULT_ROLLBACK_ALLOWANCE
+    ) -> Scru128Id:
         """
         Generates a new SCRU128 ID object from the `timestamp` passed.
 
         See the Scru128Generator class documentation for the description.
 
+        The `rollback_allowance` parameter specifies the amount of `timestamp` rollback
+        that is considered significant. A suggested value is `10_000` (milliseconds).
+        This parameter is optional to maintain backward compatibility; it is recommended
+        to provide a concrete argument.
+
         Unlike `generate()`, this method is NOT thread-safe. The generator object should
         be protected from concurrent accesses using a mutex or other synchronization
         mechanism to avoid race conditions.
         """
-        value = self.generate_core_no_rewind(timestamp)
+        value = self.generate_core_no_rewind(timestamp, rollback_allowance)
         if value is None:
             # reset state and resume
             self._timestamp = 0
             self._ts_counter_hi = 0
-            value = self.generate_core_no_rewind(timestamp)
+            value = self.generate_core_no_rewind(timestamp, rollback_allowance)
             self._last_status = Scru128Generator.Status.CLOCK_ROLLBACK
             assert value is not None
         return value
 
-    def generate_core_no_rewind(self, timestamp: int) -> typing.Optional[Scru128Id]:
+    def generate_core_no_rewind(
+        self, timestamp: int, rollback_allowance: int
+    ) -> typing.Optional[Scru128Id]:
         """
         Generates a new SCRU128 ID object from the `timestamp` passed, guaranteeing the
         monotonic order of generated IDs despite a significant timestamp rollback.
 
         See the Scru128Generator class documentation for the description.
 
+        The `rollback_allowance` parameter specifies the amount of `timestamp` rollback
+        that is considered significant. A suggested value is `10_000` (milliseconds).
+
         Unlike `generate_no_rewind()`, this method is NOT thread-safe. The generator
         object should be protected from concurrent accesses using a mutex or other
         synchronization mechanism to avoid race conditions.
         """
-        ROLLBACK_ALLOWANCE = 10_000  # 10 seconds
-
         if not (1 <= timestamp <= MAX_TIMESTAMP):
             raise ValueError("`timestamp` must be a 48-bit positive integer")
+        elif not (0 <= rollback_allowance <= MAX_TIMESTAMP):
+            raise ValueError("`rollback_allowance` out of reasonable range")
 
         if timestamp > self._timestamp:
             self._timestamp = timestamp
             self._counter_lo = self._rng.getrandbits(24)
             self._last_status = Scru128Generator.Status.NEW_TIMESTAMP
-        elif timestamp + ROLLBACK_ALLOWANCE > self._timestamp:
+        elif timestamp + rollback_allowance > self._timestamp:
             # go on with previous timestamp if new one is not much smaller
             self._counter_lo += 1
             self._last_status = Scru128Generator.Status.COUNTER_LO_INC
