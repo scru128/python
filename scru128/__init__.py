@@ -297,8 +297,6 @@ class Scru128Generator:
     @property
     def last_status(self) -> Scru128Generator.Status:
         """
-        Deprecated: use `generate_no_rewind()` to guarantee monotonicity.
-
         Returns a `Status` code that indicates the internal state involved in the last
         generation of ID.
 
@@ -306,9 +304,6 @@ class Scru128Generator:
         during the sequential calls to a generation method and this property to avoid
         race conditions.
         """
-        warnings.warn(
-            "use `generate_no_rewind()` to guarantee monotonicity", DeprecationWarning
-        )
         return self._last_status
 
     def __iter__(self) -> typing.Iterator[Scru128Id]:
@@ -328,7 +323,7 @@ class Scru128Generator:
 
     class Status(enum.Enum):
         """
-        Deprecated. The status code returned by `last_status` property.
+        The status code returned by `last_status` property.
 
         Attributes:
             NOT_EXECUTED: Indicates that the generator has yet to generate an ID.
@@ -376,12 +371,12 @@ def new_string() -> str:
 
 
 def scru128() -> Scru128Id:
-    """Deprecated synonym for `new()` (deprecated since v2.2.0)."""
+    """A deprecated synonym for `new()` (deprecated since v2.2.0)."""
     warnings.warn("use `scru128.new()` (synonym)", DeprecationWarning)
     return new()
 
 
 def scru128_string() -> str:
-    """Deprecated synonym for `new_string()` (deprecated since v2.2.0)."""
+    """A deprecated synonym for `new_string()` (deprecated since v2.2.0)."""
     warnings.warn("use `scru128.new_string()` (synonym)", DeprecationWarning)
     return new_string()
