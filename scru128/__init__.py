@@ -159,9 +159,10 @@ class Scru128Generator:
     Each method returns monotonically increasing IDs unless a `timestamp` provided is
     significantly (by ten seconds or more by default) smaller than the one embedded in
     the immediately preceding ID. If such a significant clock rollback is detected, the
-    standard `generate` rewinds the generator state and returns a new ID based on the
-    current `timestamp`, whereas `no_rewind` variants keep the state untouched and
-    return `None`. `core` functions offer low-level thread-unsafe primitives.
+    `generate` method rewinds the generator state and returns a new ID based on the
+    current `timestamp`, whereas the experimental `no_rewind` variants keep the state
+    untouched and return `None`. `core` functions offer low-level thread-unsafe
+    primitives.
     """
 
     def __init__(self, *, rng: typing.Any = None) -> None:
@@ -196,14 +197,13 @@ class Scru128Generator:
         """
         with self._lock:
             timestamp = datetime.datetime.now().timestamp()
-            return self.generate_core(
-                int(timestamp * 1_000), DEFAULT_ROLLBACK_ALLOWANCE
-            )
+            return self.generate_core(int(timestamp * 1_000))
 
     def generate_no_rewind(self) -> typing.Optional[Scru128Id]:
         """
-        Generates a new SCRU128 ID object from the current `timestamp`, guaranteeing the
-        monotonic order of generated IDs despite a significant timestamp rollback.
+        Experimental. Generates a new SCRU128 ID object from the current `timestamp`,
+        guaranteeing the monotonic order of generated IDs despite a significant
+        timestamp rollback.
 
         See the Scru128Generator class documentation for the description.
         """
@@ -213,23 +213,17 @@ class Scru128Generator:
                 int(timestamp * 1_000), DEFAULT_ROLLBACK_ALLOWANCE
             )
 
-    def generate_core(
-        self, timestamp: int, rollback_allowance: int = DEFAULT_ROLLBACK_ALLOWANCE
-    ) -> Scru128Id:
+    def generate_core(self, timestamp: int) -> Scru128Id:
         """
         Generates a new SCRU128 ID object from the `timestamp` passed.
 
         See the Scru128Generator class documentation for the description.
 
-        The `rollback_allowance` parameter specifies the amount of `timestamp` rollback
-        that is considered significant. A suggested value is `10_000` (milliseconds).
-        This parameter is optional to maintain backward compatibility; it is recommended
-        to provide a concrete argument.
-
         Unlike `generate()`, this method is NOT thread-safe. The generator object should
         be protected from concurrent accesses using a mutex or other synchronization
         mechanism to avoid race conditions.
         """
+        rollback_allowance = DEFAULT_ROLLBACK_ALLOWANCE
         value = self.generate_core_no_rewind(timestamp, rollback_allowance)
         if value is None:
             # reset state and resume
@@ -244,8 +238,9 @@ class Scru128Generator:
         self, timestamp: int, rollback_allowance: int
     ) -> typing.Optional[Scru128Id]:
         """
-        Generates a new SCRU128 ID object from the `timestamp` passed, guaranteeing the
-        monotonic order of generated IDs despite a significant timestamp rollback.
+        Experimental. Generates a new SCRU128 ID object from the `timestamp` passed,
+        guaranteeing the monotonic order of generated IDs despite a significant
+        timestamp rollback.
 
         See the Scru128Generator class documentation for the description.
 
