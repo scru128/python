@@ -20,17 +20,20 @@ import typing
 import warnings
 
 
-# Maximum value of 48-bit timestamp field.
+# The maximum value of 48-bit timestamp field.
 MAX_TIMESTAMP = 0xFFFF_FFFF_FFFF
 
-# Maximum value of 24-bit counter_hi field.
+# The maximum value of 24-bit counter_hi field.
 MAX_COUNTER_HI = 0xFF_FFFF
 
-# Maximum value of 24-bit counter_lo field.
+# The maximum value of 24-bit counter_lo field.
 MAX_COUNTER_LO = 0xFF_FFFF
 
 # Digit characters used in the Base36 notation.
 DIGITS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+# The default timestamp rollback allowance.
+DEFAULT_ROLLBACK_ALLOWANCE = 10_000  # 10 seconds
 
 
 class Scru128Id:
@@ -143,6 +146,23 @@ class Scru128Generator:
     """
     Represents a SCRU128 ID generator that encapsulates the monotonic counters and other
     internal states.
+
+    The generator offers four different methods to generate a SCRU128 ID:
+
+    | Flavor                  | Timestamp | Thread- | On big clock rewind |
+    | ----------------------- | --------- | ------- | ------------------- |
+    | generate                | Now       | Safe    | Rewinds state       |
+    | generate_no_rewind      | Now       | Safe    | Returns `None`      |
+    | generate_core           | Argument  | Unsafe  | Rewinds state       |
+    | generate_core_no_rewind | Argument  | Unsafe  | Returns `None`      |
+
+    Each method returns monotonically increasing IDs unless a `timestamp` provided is
+    significantly (by ten seconds or more by default) smaller than the one embedded in
+    the immediately preceding ID. If such a significant clock rollback is detected, the
+    `generate` method rewinds the generator state and returns a new ID based on the
+    current `timestamp`, whereas the experimental `no_rewind` variants keep the state
+    untouched and return `None`. `core` functions offer low-level thread-unsafe
+    primitives.
     """
 
     def __init__(self, *, rng: typing.Any = None) -> None:
@@ -171,30 +191,77 @@ class Scru128Generator:
 
     def generate(self) -> Scru128Id:
         """
-        Generates a new SCRU128 ID object.
+        Generates a new SCRU128 ID object from the current `timestamp`.
 
-        This method is thread-safe; multiple threads can call it concurrently.
+        See the Scru128Generator class documentation for the description.
         """
         with self._lock:
             timestamp = datetime.datetime.now().timestamp()
             return self.generate_core(int(timestamp * 1_000))
 
+    def generate_no_rewind(self) -> typing.Optional[Scru128Id]:
+        """
+        Experimental. Generates a new SCRU128 ID object from the current `timestamp`,
+        guaranteeing the monotonic order of generated IDs despite a significant
+        timestamp rollback.
+
+        See the Scru128Generator class documentation for the description.
+        """
+        with self._lock:
+            timestamp = datetime.datetime.now().timestamp()
+            return self.generate_core_no_rewind(
+                int(timestamp * 1_000), DEFAULT_ROLLBACK_ALLOWANCE
+            )
+
     def generate_core(self, timestamp: int) -> Scru128Id:
         """
-        Generates a new SCRU128 ID object with the timestamp passed.
+        Generates a new SCRU128 ID object from the `timestamp` passed.
+
+        See the Scru128Generator class documentation for the description.
 
         Unlike `generate()`, this method is NOT thread-safe. The generator object should
         be protected from concurrent accesses using a mutex or other synchronization
         mechanism to avoid race conditions.
         """
+        rollback_allowance = DEFAULT_ROLLBACK_ALLOWANCE
+        value = self.generate_core_no_rewind(timestamp, rollback_allowance)
+        if value is None:
+            # reset state and resume
+            self._timestamp = 0
+            self._ts_counter_hi = 0
+            value = self.generate_core_no_rewind(timestamp, rollback_allowance)
+            self._last_status = Scru128Generator.Status.CLOCK_ROLLBACK
+            assert value is not None
+        return value
+
+    def generate_core_no_rewind(
+        self, timestamp: int, rollback_allowance: int
+    ) -> typing.Optional[Scru128Id]:
+        """
+        Experimental. Generates a new SCRU128 ID object from the `timestamp` passed,
+        guaranteeing the monotonic order of generated IDs despite a significant
+        timestamp rollback.
+
+        See the Scru128Generator class documentation for the description.
+
+        The `rollback_allowance` parameter specifies the amount of `timestamp` rollback
+        that is considered significant. A suggested value is `10_000` (milliseconds).
+
+        Unlike `generate_no_rewind()`, this method is NOT thread-safe. The generator
+        object should be protected from concurrent accesses using a mutex or other
+        synchronization mechanism to avoid race conditions.
+        """
         if not (1 <= timestamp <= MAX_TIMESTAMP):
             raise ValueError("`timestamp` must be a 48-bit positive integer")
+        elif not (0 <= rollback_allowance <= MAX_TIMESTAMP):
+            raise ValueError("`rollback_allowance` out of reasonable range")
 
-        self._last_status = Scru128Generator.Status.NEW_TIMESTAMP
         if timestamp > self._timestamp:
             self._timestamp = timestamp
             self._counter_lo = self._rng.getrandbits(24)
-        elif timestamp + 10_000 > self._timestamp:
+            self._last_status = Scru128Generator.Status.NEW_TIMESTAMP
+        elif timestamp + rollback_allowance > self._timestamp:
+            # go on with previous timestamp if new one is not much smaller
             self._counter_lo += 1
             self._last_status = Scru128Generator.Status.COUNTER_LO_INC
             if self._counter_lo > MAX_COUNTER_LO:
@@ -208,11 +275,8 @@ class Scru128Generator:
                     self._counter_lo = self._rng.getrandbits(24)
                     self._last_status = Scru128Generator.Status.TIMESTAMP_INC
         else:
-            # reset state if clock moves back by ten seconds or more
-            self._ts_counter_hi = 0
-            self._timestamp = timestamp
-            self._counter_lo = self._rng.getrandbits(24)
-            self._last_status = Scru128Generator.Status.CLOCK_ROLLBACK
+            # abort if clock moves back to unbearable extent
+            return None
 
         if self._timestamp - self._ts_counter_hi >= 1_000 or self._ts_counter_hi < 1:
             self._ts_counter_hi = self._timestamp
@@ -254,7 +318,7 @@ class Scru128Generator:
 
     class Status(enum.Enum):
         """
-        Status code returned by `last_status` property.
+        The status code returned by `last_status` property.
 
         Attributes:
             NOT_EXECUTED: Indicates that the generator has yet to generate an ID.
@@ -279,21 +343,22 @@ class Scru128Generator:
         CLOCK_ROLLBACK = enum.auto()
 
 
-default_generator = Scru128Generator()
+global_generator = Scru128Generator()
 
 
 def new() -> Scru128Id:
     """
-    Generates a new SCRU128 ID object.
+    Generates a new SCRU128 ID object using the global generator.
 
     This function is thread-safe; multiple threads can call it concurrently.
     """
-    return default_generator.generate()
+    return global_generator.generate()
 
 
 def new_string() -> str:
     """
-    Generates a new SCRU128 ID encoded in the 25-digit canonical string representation.
+    Generates a new SCRU128 ID encoded in the 25-digit canonical string representation
+    using the global generator.
 
     This function is thread-safe. Use this to quickly get a new SCRU128 ID as a string.
     """
@@ -301,12 +366,12 @@ def new_string() -> str:
 
 
 def scru128() -> Scru128Id:
-    """Deprecated synonym for `new()` (deprecated since v2.2.0)."""
+    """A deprecated synonym for `new()` (deprecated since v2.2.0)."""
     warnings.warn("use `scru128.new()` (synonym)", DeprecationWarning)
     return new()
 
 
 def scru128_string() -> str:
-    """Deprecated synonym for `new_string()` (deprecated since v2.2.0)."""
+    """A deprecated synonym for `new_string()` (deprecated since v2.2.0)."""
     warnings.warn("use `scru128.new_string()` (synonym)", DeprecationWarning)
     return new_string()
