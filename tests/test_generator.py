@@ -5,19 +5,19 @@ import unittest
 from scru128 import Scru128Generator, Scru128Id
 
 
-class TestGenerateCore(unittest.TestCase):
+class TestGenerateOrReset(unittest.TestCase):
     def test_decreasing_or_constant_timestamp(self) -> None:
         """Generates increasing IDs even with decreasing or constant timestamp"""
         ts = 0x0123_4567_89AB
         g = Scru128Generator()
         self.assertEqual(g.last_status, Scru128Generator.Status.NOT_EXECUTED)
 
-        prev = g.generate_core(ts)
+        prev = g.generate_or_reset_core(ts, 10_000)
         self.assertEqual(g.last_status, Scru128Generator.Status.NEW_TIMESTAMP)
         self.assertEqual(prev.timestamp, ts)
 
         for i in range(100_000):
-            curr = g.generate_core(ts - min(9_998, i))
+            curr = g.generate_or_reset_core(ts - min(9_998, i), 10_000)
             self.assertTrue(
                 g.last_status == Scru128Generator.Status.COUNTER_LO_INC
                 or g.last_status == Scru128Generator.Status.COUNTER_HI_INC
@@ -33,17 +33,17 @@ class TestGenerateCore(unittest.TestCase):
         g = Scru128Generator()
         self.assertEqual(g.last_status, Scru128Generator.Status.NOT_EXECUTED)
 
-        prev = g.generate_core(ts)
+        prev = g.generate_or_reset_core(ts, 10_000)
         self.assertEqual(g.last_status, Scru128Generator.Status.NEW_TIMESTAMP)
         self.assertEqual(prev.timestamp, ts)
 
-        curr = g.generate_core(ts - 10_000)
+        curr = g.generate_or_reset_core(ts - 10_000, 10_000)
         self.assertEqual(g.last_status, Scru128Generator.Status.CLOCK_ROLLBACK)
         self.assertGreater(prev, curr)
         self.assertEqual(curr.timestamp, ts - 10_000)
 
         prev = curr
-        curr = g.generate_core(ts - 10_001)
+        curr = g.generate_or_reset_core(ts - 10_001, 10_000)
         self.assertTrue(
             g.last_status == Scru128Generator.Status.COUNTER_LO_INC
             or g.last_status == Scru128Generator.Status.COUNTER_HI_INC

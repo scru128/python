@@ -153,7 +153,7 @@ class Scru128Generator:
     | ---------------------- | --------- | ------- | ------------------- |
     | generate               | Now       | Safe    | Resets generator    |
     | generate_or_abort      | Now       | Safe    | Returns `None`      |
-    | generate_core          | Argument  | Unsafe  | Resets generator    |
+    | generate_or_reset_core | Argument  | Unsafe  | Resets generator    |
     | generate_or_abort_core | Argument  | Unsafe  | Returns `None`      |
 
     All of these methods return monotonically increasing IDs unless a `timestamp`
@@ -190,13 +190,16 @@ class Scru128Generator:
 
     def generate(self) -> Scru128Id:
         """
-        Generates a new SCRU128 ID object from the current `timestamp`.
+        Generates a new SCRU128 ID object from the current `timestamp`, or resets the
+        generator upon significant timestamp rollback.
 
         See the Scru128Generator class documentation for the description.
         """
         with self._lock:
             timestamp = datetime.datetime.now().timestamp()
-            return self.generate_core(int(timestamp * 1_000))
+            return self.generate_or_reset_core(
+                int(timestamp * 1_000), DEFAULT_ROLLBACK_ALLOWANCE
+            )
 
     def generate_or_abort(self) -> typing.Optional[Scru128Id]:
         """
@@ -211,11 +214,17 @@ class Scru128Generator:
                 int(timestamp * 1_000), DEFAULT_ROLLBACK_ALLOWANCE
             )
 
-    def generate_core(self, timestamp: int) -> Scru128Id:
+    def generate_or_reset_core(
+        self, timestamp: int, rollback_allowance: int
+    ) -> Scru128Id:
         """
-        Generates a new SCRU128 ID object from the `timestamp` passed.
+        Generates a new SCRU128 ID object from the `timestamp` passed, or resets the
+        generator upon significant timestamp rollback.
 
         See the Scru128Generator class documentation for the description.
+
+        The `rollback_allowance` parameter specifies the amount of `timestamp` rollback
+        that is considered significant. A suggested value is `10_000` (milliseconds).
 
         Unlike `generate()`, this method is NOT thread-safe. The generator object should
         be protected from concurrent accesses using a mutex or other synchronization
@@ -231,6 +240,18 @@ class Scru128Generator:
             self._last_status = Scru128Generator.Status.CLOCK_ROLLBACK
             assert value is not None
         return value
+
+    def generate_core(self, timestamp: int) -> Scru128Id:
+        """
+        Deprecated: Use `generate_or_reset_core(timestamp, 10_000)` instead.
+
+        A deprecated synonym for `generate_or_reset_core(timestamp, 10_000)`.
+        """
+        warnings.warn(
+            "use `generate_or_reset_core(timestamp, 10_000)` instead",
+            DeprecationWarning,
+        )
+        return self.generate_or_reset_core(timestamp, DEFAULT_ROLLBACK_ALLOWANCE)
 
     def generate_or_abort_core(
         self, timestamp: int, rollback_allowance: int
