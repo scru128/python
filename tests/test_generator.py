@@ -52,20 +52,20 @@ class TestGenerateCore(unittest.TestCase):
         self.assertLess(prev, curr)
 
 
-class TestGenerateCoreNoRewind(unittest.TestCase):
+class TestGenerateOrAbort(unittest.TestCase):
     def test_decreasing_or_constant_timestamp(self) -> None:
         """Generates increasing IDs even with decreasing or constant timestamp"""
         ts = 0x0123_4567_89AB
         g = Scru128Generator()
         self.assertEqual(g.last_status, Scru128Generator.Status.NOT_EXECUTED)
 
-        prev = g.generate_core_no_rewind(ts, 10_000)
+        prev = g.generate_or_abort_core(ts, 10_000)
         assert prev is not None
         self.assertEqual(g.last_status, Scru128Generator.Status.NEW_TIMESTAMP)
         self.assertEqual(prev.timestamp, ts)
 
         for i in range(100_000):
-            curr = g.generate_core_no_rewind(ts - min(9_998, i), 10_000)
+            curr = g.generate_or_abort_core(ts - min(9_998, i), 10_000)
             assert curr is not None
             self.assertTrue(
                 g.last_status == Scru128Generator.Status.COUNTER_LO_INC
@@ -82,16 +82,16 @@ class TestGenerateCoreNoRewind(unittest.TestCase):
         g = Scru128Generator()
         self.assertEqual(g.last_status, Scru128Generator.Status.NOT_EXECUTED)
 
-        prev = g.generate_core_no_rewind(ts, 10_000)
+        prev = g.generate_or_abort_core(ts, 10_000)
         assert prev is not None
         self.assertEqual(g.last_status, Scru128Generator.Status.NEW_TIMESTAMP)
         self.assertEqual(prev.timestamp, ts)
 
-        curr = g.generate_core_no_rewind(ts - 10_000, 10_000)
+        curr = g.generate_or_abort_core(ts - 10_000, 10_000)
         assert curr is None
         self.assertEqual(g.last_status, Scru128Generator.Status.NEW_TIMESTAMP)
 
-        curr = g.generate_core_no_rewind(ts - 10_001, 10_000)
+        curr = g.generate_or_abort_core(ts - 10_001, 10_000)
         assert curr is None
         self.assertEqual(g.last_status, Scru128Generator.Status.NEW_TIMESTAMP)
 

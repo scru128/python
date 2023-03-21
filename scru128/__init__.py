@@ -149,20 +149,19 @@ class Scru128Generator:
 
     The generator offers four different methods to generate a SCRU128 ID:
 
-    | Flavor                  | Timestamp | Thread- | On big clock rewind |
-    | ----------------------- | --------- | ------- | ------------------- |
-    | generate                | Now       | Safe    | Rewinds state       |
-    | generate_no_rewind      | Now       | Safe    | Returns `None`      |
-    | generate_core           | Argument  | Unsafe  | Rewinds state       |
-    | generate_core_no_rewind | Argument  | Unsafe  | Returns `None`      |
+    | Flavor                 | Timestamp | Thread- | On big clock rewind |
+    | ---------------------- | --------- | ------- | ------------------- |
+    | generate               | Now       | Safe    | Resets generator    |
+    | generate_or_abort      | Now       | Safe    | Returns `None`      |
+    | generate_core          | Argument  | Unsafe  | Resets generator    |
+    | generate_or_abort_core | Argument  | Unsafe  | Returns `None`      |
 
-    Each method returns monotonically increasing IDs unless a `timestamp` provided is
-    significantly (by ten seconds or more by default) smaller than the one embedded in
-    the immediately preceding ID. If such a significant clock rollback is detected, the
-    `generate` method rewinds the generator state and returns a new ID based on the
-    current `timestamp`, whereas the experimental `no_rewind` variants keep the state
-    untouched and return `None`. `core` functions offer low-level thread-unsafe
-    primitives.
+    All of these methods return monotonically increasing IDs unless a `timestamp`
+    provided is significantly (by default, ten seconds or more) smaller than the one
+    embedded in the immediately preceding ID. If such a significant clock rollback is
+    detected, the `generate` (or_reset) method resets the generator and returns a new ID
+    based on the given `timestamp`, while the `or_abort` variants abort and return
+    `None`. The `core` functions offer low-level thread-unsafe primitives.
     """
 
     def __init__(self, *, rng: typing.Any = None) -> None:
@@ -199,17 +198,16 @@ class Scru128Generator:
             timestamp = datetime.datetime.now().timestamp()
             return self.generate_core(int(timestamp * 1_000))
 
-    def generate_no_rewind(self) -> typing.Optional[Scru128Id]:
+    def generate_or_abort(self) -> typing.Optional[Scru128Id]:
         """
-        Experimental. Generates a new SCRU128 ID object from the current `timestamp`,
-        guaranteeing the monotonic order of generated IDs despite a significant
-        timestamp rollback.
+        Generates a new SCRU128 ID object from the current `timestamp`, or returns
+        `None` upon significant timestamp rollback.
 
         See the Scru128Generator class documentation for the description.
         """
         with self._lock:
             timestamp = datetime.datetime.now().timestamp()
-            return self.generate_core_no_rewind(
+            return self.generate_or_abort_core(
                 int(timestamp * 1_000), DEFAULT_ROLLBACK_ALLOWANCE
             )
 
@@ -224,30 +222,29 @@ class Scru128Generator:
         mechanism to avoid race conditions.
         """
         rollback_allowance = DEFAULT_ROLLBACK_ALLOWANCE
-        value = self.generate_core_no_rewind(timestamp, rollback_allowance)
+        value = self.generate_or_abort_core(timestamp, rollback_allowance)
         if value is None:
             # reset state and resume
             self._timestamp = 0
             self._ts_counter_hi = 0
-            value = self.generate_core_no_rewind(timestamp, rollback_allowance)
+            value = self.generate_or_abort_core(timestamp, rollback_allowance)
             self._last_status = Scru128Generator.Status.CLOCK_ROLLBACK
             assert value is not None
         return value
 
-    def generate_core_no_rewind(
+    def generate_or_abort_core(
         self, timestamp: int, rollback_allowance: int
     ) -> typing.Optional[Scru128Id]:
         """
-        Experimental. Generates a new SCRU128 ID object from the `timestamp` passed,
-        guaranteeing the monotonic order of generated IDs despite a significant
-        timestamp rollback.
+        Generates a new SCRU128 ID object from the `timestamp` passed, or returns `None`
+        upon significant timestamp rollback.
 
         See the Scru128Generator class documentation for the description.
 
         The `rollback_allowance` parameter specifies the amount of `timestamp` rollback
         that is considered significant. A suggested value is `10_000` (milliseconds).
 
-        Unlike `generate_no_rewind()`, this method is NOT thread-safe. The generator
+        Unlike `generate_or_abort()`, this method is NOT thread-safe. The generator
         object should be protected from concurrent accesses using a mutex or other
         synchronization mechanism to avoid race conditions.
         """

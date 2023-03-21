@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.4.0 - unreleased
+
+### Added
+
+- `generate_or_abort()` and `generate_or_abort_core()` to `Scru128Generator`
+  (formerly named as `generate_no_rewind()` and `generate_core_no_rewind()`)
+
 ## v2.3.1 - 2023-03-19
 
 ### Added
