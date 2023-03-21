@@ -310,6 +310,8 @@ class Scru128Generator:
     @property
     def last_status(self) -> Scru128Generator.Status:
         """
+        Deprecated: Use `generate_or_abort()` to guarantee monotonicity.
+
         Returns a `Status` code that indicates the internal state involved in the last
         generation of ID.
 
@@ -317,6 +319,10 @@ class Scru128Generator:
         during the sequential calls to a generation method and this property to avoid
         race conditions.
         """
+        warnings.warn(
+            "use `generate_or_abort()` to guarantee monotonicity",
+            DeprecationWarning,
+        )
         return self._last_status
 
     def __iter__(self) -> typing.Iterator[Scru128Id]:
@@ -336,6 +342,8 @@ class Scru128Generator:
 
     class Status(enum.Enum):
         """
+        Deprecated: Use `generate_or_abort()` to guarantee monotonicity.
+
         The status code returned by `last_status` property.
 
         Attributes:
