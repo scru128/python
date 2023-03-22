@@ -230,7 +230,6 @@ class Scru128Generator:
         be protected from concurrent accesses using a mutex or other synchronization
         mechanism to avoid race conditions.
         """
-        rollback_allowance = DEFAULT_ROLLBACK_ALLOWANCE
         value = self.generate_or_abort_core(timestamp, rollback_allowance)
         if value is None:
             # reset state and resume
