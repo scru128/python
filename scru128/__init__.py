@@ -293,7 +293,7 @@ class Scru128Generator:
                     self._counter_lo = self._rng.getrandbits(24)
                     self._last_status = Scru128Generator.Status.TIMESTAMP_INC
         else:
-            # abort if clock moves back to unbearable extent
+            # abort if clock went backwards to unbearable extent
             return None
 
         if self._timestamp - self._ts_counter_hi >= 1_000 or self._ts_counter_hi < 1:

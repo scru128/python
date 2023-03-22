@@ -28,7 +28,7 @@ class TestGenerateOrReset(unittest.TestCase):
         self.assertGreaterEqual(prev.timestamp, ts)
 
     def test_timestamp_rollback(self) -> None:
-        """Breaks increasing order of IDs if timestamp moves backward a lot"""
+        """Breaks increasing order of IDs if timestamp goes backwards by ten seconds"""
         ts = 0x0123_4567_89AB
         g = Scru128Generator()
         self.assertEqual(g._last_status, Scru128Generator.Status.NOT_EXECUTED)
@@ -77,7 +77,7 @@ class TestGenerateOrAbort(unittest.TestCase):
         self.assertGreaterEqual(prev.timestamp, ts)
 
     def test_timestamp_rollback(self) -> None:
-        """Returns None if timestamp moves backward a lot"""
+        """Returns None if timestamp goes backwards by ten seconds"""
         ts = 0x0123_4567_89AB
         g = Scru128Generator()
         self.assertEqual(g._last_status, Scru128Generator.Status.NOT_EXECUTED)
