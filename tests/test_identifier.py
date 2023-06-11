@@ -79,6 +79,13 @@ class TestIdentifier(unittest.TestCase):
             "036Z8PUQ5A7J0TI08P4J 6CYA",
             "F5LXX1ZZ5PNORYNQGLHZMSP34",
             "ZZZZZZZZZZZZZZZZZZZZZZZZZ",
+            "039O\tVVKLFMQLQE7FZLLZ7C7T",
+            "039ONVVKLFMQLQ漢字FGVD1",
+            "039ONVVKL🤣QE7FZR2HDOQU",
+            "頭ONVVKLFMQLQE7FZRHTGCFZ",
+            "039ONVVKLFMQLQE7FZTFT5尾",
+            "039漢字A52XP4BVF4SN94E09CJA",
+            "039OOA52XP4BV😘SN97642MWL",
         ]
 
         for e in cases:
