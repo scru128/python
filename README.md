@@ -19,11 +19,11 @@ import scru128
 
 # generate a new identifier object
 x = scru128.new()
-print(x)  # e.g. "036Z951MHJIKZIK2GSL81GR7L"
+print(x)  # e.g., "036z951mhjikzik2gsl81gr7l"
 print(int(x))  # as a 128-bit unsigned integer
 
 # generate a textual representation directly
-print(scru128.new_string())  # e.g. "036Z951MHZX67T63MQ9XE6Q0J"
+print(scru128.new_string())  # e.g., "036z951mhzx67t63mq9xe6q0j"
 ```
 
 See [SCRU128 Specification] for details.
@@ -39,12 +39,12 @@ See [SCRU128 Specification] for details.
 
 ```bash
 $ scru128
-036ZG4ZLMDWDZ8414EIM77VCT
+036zg4zlmdwdz8414eim77vct
 $ scru128 -n 4
-036ZG4ZLV707WNCZL108KY4I7
-036ZG4ZLV707WNCZL12TOWMHO
-036ZG4ZLV707WNCZL14HIRM6N
-036ZG4ZLV707WNCZL17110SHH
+036zg4zlv707wnczl108ky4i7
+036zg4zlv707wnczl12towmho
+036zg4zlv707wnczl14hirm6n
+036zg4zlv707wnczl17110shh
 ```
 
 `scru128-inspect` prints the components of given SCRU128 IDs as human- and
@@ -53,8 +53,8 @@ machine-readable JSON objects.
 ```bash
 $ scru128 -n 2 | scru128-inspect
 {
-  "input":        "036ZG552N91MT9S0GYHDWIF95",
-  "canonical":    "036ZG552N91MT9S0GYHDWIF95",
+  "input":        "036zg552n91mt9s0gyhdwif95",
+  "canonical":    "036zg552n91mt9s0gyhdwif95",
   "timestampIso": "2022-03-20T08:34:01.493+00:00",
   "timestamp":    "1647765241493",
   "counterHi":    "10145723",
@@ -63,8 +63,8 @@ $ scru128 -n 2 | scru128-inspect
   "fieldsHex":    ["017fa6763e95", "9acfbb", "c918cc", "f86021b9"]
 }
 {
-  "input":        "036ZG552N91MT9S0GYJ7I56SJ",
-  "canonical":    "036ZG552N91MT9S0GYJ7I56SJ",
+  "input":        "036zg552n91mt9s0gyj7i56sj",
+  "canonical":    "036zg552n91mt9s0gyj7i56sj",
   "timestampIso": "2022-03-20T08:34:01.493+00:00",
   "timestamp":    "1647765241493",
   "counterHi":    "10145723",
