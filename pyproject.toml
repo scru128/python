@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "scru128"
-version = "2.4.1"
+version = "2.4.2"
 description = "SCRU128: Sortable, Clock and Random number-based Unique identifier"
 license = "Apache-2.0"
 authors = ["LiosK <contact@mail.liosk.net>"]
@@ -18,7 +18,7 @@ python = "^3.7"
 
 [tool.poetry.dev-dependencies]
 black = "^23.3.0"
-mypy = "^1.2.0"
+mypy = "^1.4.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

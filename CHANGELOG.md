@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.4.2 - 2023-06-21
+
+### Maintenance
+
+- Updated dev dependencies
+- Improved test cases
+
 ## v2.4.1 - 2023-04-07
 
 ### Maintenance
