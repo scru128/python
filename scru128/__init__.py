@@ -26,7 +26,7 @@ MAX_COUNTER_HI = 0xFF_FFFF
 MAX_COUNTER_LO = 0xFF_FFFF
 
 # Digit characters used in the Base36 notation.
-DIGITS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz"
 
 # The default timestamp rollback allowance.
 DEFAULT_ROLLBACK_ALLOWANCE = 10_000  # 10 seconds

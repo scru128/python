@@ -24,7 +24,7 @@ class TestScru128String(unittest.TestCase):
         """Generates 25-digit canonical string"""
         for e in self._samples:
             self.assertEqual(type(e), str)
-            self.assertRegex(e, r"^[0-9A-Z]{25}$")
+            self.assertRegex(e, r"^[0-9a-z]{25}$")
 
     def test_uniqueness(self) -> None:
         """Generates 100k identifiers without collision"""
