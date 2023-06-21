@@ -5,19 +5,15 @@ from __future__ import annotations
 __all__ = [
     "new",
     "new_string",
-    "scru128",
-    "scru128_string",
     "Scru128Generator",
     "Scru128Id",
 ]
 
 import datetime
-import enum
 import re
 import secrets
 import threading
 import typing
-import warnings
 
 
 # The maximum value of 48-bit timestamp field.
@@ -179,7 +175,6 @@ class Scru128Generator:
         self._counter_hi = 0
         self._counter_lo = 0
         self._ts_counter_hi = 0
-        self._last_status = Scru128Generator.Status.NOT_EXECUTED
         self._lock = threading.Lock()
         if rng is None:
             self._rng = DefaultRandom()
@@ -236,21 +231,8 @@ class Scru128Generator:
             self._timestamp = 0
             self._ts_counter_hi = 0
             value = self.generate_or_abort_core(timestamp, rollback_allowance)
-            self._last_status = Scru128Generator.Status.CLOCK_ROLLBACK
             assert value is not None
         return value
-
-    def generate_core(self, timestamp: int) -> Scru128Id:
-        """
-        Deprecated: Use `generate_or_reset_core(timestamp, 10_000)` instead.
-
-        A deprecated synonym for `generate_or_reset_core(timestamp, 10_000)`.
-        """
-        warnings.warn(
-            "use `generate_or_reset_core(timestamp, 10_000)` instead",
-            DeprecationWarning,
-        )
-        return self.generate_or_reset_core(timestamp, DEFAULT_ROLLBACK_ALLOWANCE)
 
     def generate_or_abort_core(
         self, timestamp: int, rollback_allowance: int
@@ -276,21 +258,17 @@ class Scru128Generator:
         if timestamp > self._timestamp:
             self._timestamp = timestamp
             self._counter_lo = self._rng.getrandbits(24)
-            self._last_status = Scru128Generator.Status.NEW_TIMESTAMP
         elif timestamp + rollback_allowance > self._timestamp:
             # go on with previous timestamp if new one is not much smaller
             self._counter_lo += 1
-            self._last_status = Scru128Generator.Status.COUNTER_LO_INC
             if self._counter_lo > MAX_COUNTER_LO:
                 self._counter_lo = 0
                 self._counter_hi += 1
-                self._last_status = Scru128Generator.Status.COUNTER_HI_INC
                 if self._counter_hi > MAX_COUNTER_HI:
                     self._counter_hi = 0
                     # increment timestamp at counter overflow
                     self._timestamp += 1
                     self._counter_lo = self._rng.getrandbits(24)
-                    self._last_status = Scru128Generator.Status.TIMESTAMP_INC
         else:
             # abort if clock went backwards to unbearable extent
             return None
@@ -306,24 +284,6 @@ class Scru128Generator:
             self._rng.getrandbits(32),
         )
 
-    @property
-    def last_status(self) -> Scru128Generator.Status:
-        """
-        Deprecated: Use `generate_or_abort()` to guarantee monotonicity.
-
-        Returns a `Status` code that indicates the internal state involved in the last
-        generation of ID.
-
-        Note that the generator object should be protected from concurrent accesses
-        during the sequential calls to a generation method and this property to avoid
-        race conditions.
-        """
-        warnings.warn(
-            "use `generate_or_abort()` to guarantee monotonicity",
-            DeprecationWarning,
-        )
-        return self._last_status
-
     def __iter__(self) -> typing.Iterator[Scru128Id]:
         """
         Returns an infinite iterator object that produces a new ID for each call of
@@ -338,34 +298,6 @@ class Scru128Generator:
         This method is a synonym for `generate()` to use `self` as an infinite iterator.
         """
         return self.generate()
-
-    class Status(enum.Enum):
-        """
-        Deprecated: Use `generate_or_abort()` to guarantee monotonicity.
-
-        The status code returned by `last_status` property.
-
-        Attributes:
-            NOT_EXECUTED: Indicates that the generator has yet to generate an ID.
-            NEW_TIMESTAMP: Indicates that the latest timestamp was used because it was
-                greater than the previous one.
-            COUNTER_LO_INC: Indicates that counter_lo was incremented because the latest
-                timestamp was no greater than the previous one.
-            COUNTER_HI_INC: Indicates that counter_hi was incremented because counter_lo
-                reached its maximum value.
-            TIMESTAMP_INC: Indicates that the previous timestamp was incremented because
-                counter_hi reached its maximum value.
-            CLOCK_ROLLBACK: Indicates that the monotonic order of generated IDs was
-                broken because the latest timestamp was less than the previous one by
-                ten seconds or more.
-        """
-
-        NOT_EXECUTED = enum.auto()
-        NEW_TIMESTAMP = enum.auto()
-        COUNTER_LO_INC = enum.auto()
-        COUNTER_HI_INC = enum.auto()
-        TIMESTAMP_INC = enum.auto()
-        CLOCK_ROLLBACK = enum.auto()
 
 
 global_generator = Scru128Generator()
@@ -388,15 +320,3 @@ def new_string() -> str:
     This function is thread-safe. Use this to quickly get a new SCRU128 ID as a string.
     """
     return str(new())
-
-
-def scru128() -> Scru128Id:
-    """A deprecated synonym for `new()` (deprecated since v2.2.0)."""
-    warnings.warn("use `scru128.new()` (synonym)", DeprecationWarning)
-    return new()
-
-
-def scru128_string() -> str:
-    """A deprecated synonym for `new_string()` (deprecated since v2.2.0)."""
-    warnings.warn("use `scru128.new_string()` (synonym)", DeprecationWarning)
-    return new_string()

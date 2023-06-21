@@ -2,6 +2,13 @@
 
 ## v3.0.0 - unreleased
 
+### Removed
+
+- Deprecated items:
+  - `scru128()` and `scru128_string()`
+  - `Scru128Generator#generate_core()`
+  - `Scru128Generator#last_status` and `Scru128Generator.Status`
+
 ### Maintenance
 
 - Upgraded minimum supported Python version to 3.8
