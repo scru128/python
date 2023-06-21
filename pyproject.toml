@@ -14,7 +14,7 @@ scru128 = "scru128.cli:generate"
 scru128-inspect = "scru128.cli:inspect"
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.8"
 
 [tool.poetry.dev-dependencies]
 black = "^23.3.0"

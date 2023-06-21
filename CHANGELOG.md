@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.0.0 - unreleased
+
+### Maintenance
+
+- Upgraded minimum supported Python version to 3.8
+- Updated dev dependencies
+
 ## v2.4.2 - 2023-06-21
 
 ### Maintenance
