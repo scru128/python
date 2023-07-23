@@ -153,7 +153,7 @@ class Scru128Generator:
     | generate_or_abort_core | Argument  | Unsafe  | Returns `None`      |
 
     All of these methods return monotonically increasing IDs unless a `timestamp`
-    provided is significantly (by default, ten seconds or more) smaller than the one
+    provided is significantly (by default, more than ten seconds) smaller than the one
     embedded in the immediately preceding ID. If such a significant clock rollback is
     detected, the `generate` (or_reset) method resets the generator and returns a new ID
     based on the given `timestamp`, while the `or_abort` variants abort and return
@@ -258,7 +258,7 @@ class Scru128Generator:
         if timestamp > self._timestamp:
             self._timestamp = timestamp
             self._counter_lo = self._rng.getrandbits(24)
-        elif timestamp + rollback_allowance > self._timestamp:
+        elif timestamp + rollback_allowance >= self._timestamp:
             # go on with previous timestamp if new one is not much smaller
             self._counter_lo += 1
             if self._counter_lo > MAX_COUNTER_LO:
