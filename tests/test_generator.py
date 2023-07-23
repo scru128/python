@@ -15,7 +15,7 @@ class TestGenerateOrReset(unittest.TestCase):
         self.assertEqual(prev.timestamp, ts)
 
         for i in range(100_000):
-            curr = g.generate_or_reset_core(ts - min(9_998, i), 10_000)
+            curr = g.generate_or_reset_core(ts - min(9_999, i), 10_000)
             self.assertLess(prev, curr)
             prev = curr
         self.assertGreaterEqual(prev.timestamp, ts)
@@ -29,11 +29,15 @@ class TestGenerateOrReset(unittest.TestCase):
         self.assertEqual(prev.timestamp, ts)
 
         curr = g.generate_or_reset_core(ts - 10_000, 10_000)
-        self.assertGreater(prev, curr)
-        self.assertEqual(curr.timestamp, ts - 10_000)
+        self.assertLess(prev, curr)
 
         prev = curr
         curr = g.generate_or_reset_core(ts - 10_001, 10_000)
+        self.assertGreater(prev, curr)
+        self.assertEqual(curr.timestamp, ts - 10_001)
+
+        prev = curr
+        curr = g.generate_or_reset_core(ts - 10_002, 10_000)
         self.assertLess(prev, curr)
 
 
@@ -48,7 +52,7 @@ class TestGenerateOrAbort(unittest.TestCase):
         self.assertEqual(prev.timestamp, ts)
 
         for i in range(100_000):
-            curr = g.generate_or_abort_core(ts - min(9_998, i), 10_000)
+            curr = g.generate_or_abort_core(ts - min(9_999, i), 10_000)
             assert curr is not None
             self.assertLess(prev, curr)
             prev = curr
@@ -64,9 +68,13 @@ class TestGenerateOrAbort(unittest.TestCase):
         self.assertEqual(prev.timestamp, ts)
 
         curr = g.generate_or_abort_core(ts - 10_000, 10_000)
-        assert curr is None
+        assert curr is not None
+        self.assertLess(prev, curr)
 
         curr = g.generate_or_abort_core(ts - 10_001, 10_000)
+        assert curr is None
+
+        curr = g.generate_or_abort_core(ts - 10_002, 10_000)
         assert curr is None
 
 
