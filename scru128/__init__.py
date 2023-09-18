@@ -143,7 +143,7 @@ class Scru128Generator:
     Represents a SCRU128 ID generator that encapsulates the monotonic counters and other
     internal states.
 
-    The generator offers four different methods to generate a SCRU128 ID:
+    The generator comes with four different methods that generate a SCRU128 ID:
 
     | Flavor                 | Timestamp | Thread- | On big clock rewind |
     | ---------------------- | --------- | ------- | ------------------- |
@@ -152,12 +152,17 @@ class Scru128Generator:
     | generate_or_reset_core | Argument  | Unsafe  | Resets generator    |
     | generate_or_abort_core | Argument  | Unsafe  | Returns `None`      |
 
-    All of these methods return monotonically increasing IDs unless a `timestamp`
-    provided is significantly (by default, more than ten seconds) smaller than the one
-    embedded in the immediately preceding ID. If such a significant clock rollback is
-    detected, the `generate` (or_reset) method resets the generator and returns a new ID
-    based on the given `timestamp`, while the `or_abort` variants abort and return
-    `None`. The `core` functions offer low-level thread-unsafe primitives.
+    All of the four return a monotonically increasing ID by reusing the previous
+    `timestamp` even if the one provided is smaller than the immediately preceding ID's.
+    However, when such a clock rollback is considered significant (by default, more than
+    ten seconds):
+
+    1.  `generate` (or_reset) methods reset the generator and return a new ID based on
+        the given `timestamp`, breaking the increasing order of IDs.
+    2.  `or_abort` variants abort and return `None` immediately.
+
+    The `core` functions offer low-level thread-unsafe primitives to customize the
+    behavior.
     """
 
     def __init__(self, *, rng: typing.Any = None) -> None:
