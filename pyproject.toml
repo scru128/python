@@ -17,7 +17,7 @@ scru128-inspect = "scru128.cli:inspect"
 python = "^3.8"
 
 [tool.poetry.dev-dependencies]
-black = "^23.9.1"
+black = "^24.3.0"
 mypy = "^1.5.1"
 
 [build-system]
