@@ -1,25 +1,28 @@
-[tool.poetry]
+[project]
 name = "scru128"
-version = "3.0.3"
+version = "3.0.4"
 description = "SCRU128: Sortable, Clock and Random number-based Unique identifier"
-license = "Apache-2.0"
-authors = ["LiosK <contact@mail.liosk.net>"]
+authors = [{name = "LiosK",email = "contact@mail.liosk.net"}]
+license = {text = "Apache-2.0"}
 readme = "README.md"
-homepage = "https://github.com/scru128/python"
+requires-python = ">=3.9"
 keywords = ["identifier", "uuid", "guid", "ulid", "ksuid"]
-classifiers = ["Operating System :: OS Independent"]
+dynamic = ["classifiers"]
 
-[tool.poetry.scripts]
+[project.urls]
+Homepage = "https://github.com/scru128/python"
+
+[project.scripts]
 scru128 = "scru128.cli:generate"
 scru128-inspect = "scru128.cli:inspect"
 
-[tool.poetry.dependencies]
-python = "^3.8"
+[tool.poetry]
+classifiers = ["Operating System :: OS Independent"]
 
-[tool.poetry.dev-dependencies]
-black = "^24.3.0"
-mypy = "^1.9.0"
+[tool.poetry.group.dev.dependencies]
+black = "^24.10.0"
+mypy = "^1.14.1"
 
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
